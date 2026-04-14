@@ -142,6 +142,7 @@ export function parseCreateRoomInput(payload: unknown): CreateRoomInput {
     floor: ensureOptionalString(input.floor),
     maxGuests: ensurePositiveInt(input.maxGuests, "maxGuests", 2),
     bedCount: ensurePositiveInt(input.bedCount, "bedCount", 1),
+    unitCount: ensurePositiveInt(input.unitCount, "unitCount", 1),
     bedSize: bedSize ?? legacyBed,
     priceWeekday: ensureOptionalPrice(input.priceWeekday, "priceWeekday"),
     priceWeekend: ensureOptionalPrice(input.priceWeekend, "priceWeekend"),

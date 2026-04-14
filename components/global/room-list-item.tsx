@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import {
   BedDoubleIcon,
   Building2Icon,
+  HomeIcon,
   LayersIcon,
   MoreHorizontalIcon,
   PencilIcon,
@@ -21,7 +22,7 @@ import {
 } from "lucide-react";
 
 function formatPrice(n: number) {
-  return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  return `Rs.\u00a0${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 }
 
 function statusIndicatorClass(status: string) {
@@ -62,6 +63,7 @@ type RoomListItemRowProps = {
 
 export function RoomListItemRow({ room, onEdit, onDelete }: RoomListItemRowProps) {
   const bedCount = room.bedCount ?? 1;
+  const unitCount = room.unitCount ?? 1;
   const typeLabel = room.type.replace(/_/g, " ");
   const bedSize = room.bedSize ?? room.bedSummary;
 
@@ -110,6 +112,13 @@ export function RoomListItemRow({ room, onEdit, onDelete }: RoomListItemRowProps
           >
             <BedDoubleIcon className="size-3.5 shrink-0 opacity-80" aria-hidden />
             {bedCount} bed{bedCount === 1 ? "" : "s"}
+          </span>
+          <span
+            className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/35 px-2 py-0.5 text-xs text-muted-foreground"
+            title="Physical rooms of this type (identical setup)"
+          >
+            <HomeIcon className="size-3.5 shrink-0 opacity-80" aria-hidden />
+            {unitCount} room{unitCount === 1 ? "" : "s"}
           </span>
           {bedSize ? (
             <span

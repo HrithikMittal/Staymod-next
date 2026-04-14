@@ -64,12 +64,17 @@ export async function GET(_req: Request, context: RouteContext) {
         typeof r.bedCount === "number" && Number.isFinite(r.bedCount) && r.bedCount >= 1
           ? Math.floor(r.bedCount)
           : 1;
+      const unitCount =
+        typeof r.unitCount === "number" && Number.isFinite(r.unitCount) && r.unitCount >= 1
+          ? Math.floor(r.unitCount)
+          : 1;
       return {
         ...r,
         _id: r._id.toString(),
         propertyId: r.propertyId.toString(),
         amenities: Array.isArray(r.amenities) ? r.amenities : [],
         bedCount,
+        unitCount,
       };
     }),
   });

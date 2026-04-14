@@ -2,6 +2,8 @@
 
 import { UserButton, useUser } from "@clerk/nextjs";
 
+import { cn } from "@/lib/utils";
+
 const userButtonAppearance = {
   elements: {
     userButtonBox: "flex shrink-0 items-center",
@@ -27,7 +29,11 @@ function primaryEmail(user: NonNullable<ReturnType<typeof useUser>["user"]>) {
   );
 }
 
-export function PropertySidebarFooter() {
+type PropertySidebarFooterProps = {
+  collapsed?: boolean;
+};
+
+export function PropertySidebarFooter({ collapsed = false }: PropertySidebarFooterProps) {
   const { user, isLoaded } = useUser();
 
   if (!isLoaded || !user) {
@@ -38,15 +44,27 @@ export function PropertySidebarFooter() {
   const email = primaryEmail(user);
 
   return (
-    <div className="shrink-0 border-sidebar-border border-t pr-2 pl-3 pt-2.5 pb-2.5">
-      <div className="flex min-h-8 items-center gap-2.5">
+    <div
+      className={cn(
+        "shrink-0 border-sidebar-border border-t pt-2.5 pb-2.5",
+        collapsed ? "px-2" : "pr-2 pl-3",
+      )}
+    >
+      <div
+        className={cn(
+          "flex min-h-8 items-center gap-2.5",
+          collapsed && "justify-center",
+        )}
+      >
         <UserButton appearance={userButtonAppearance} />
-        <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
-          <p className="truncate text-xs font-medium leading-tight text-sidebar-foreground">{name}</p>
-          {email ? (
-            <p className="truncate text-[11px] leading-tight text-muted-foreground">{email}</p>
-          ) : null}
-        </div>
+        {!collapsed ? (
+          <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
+            <p className="truncate text-xs font-medium leading-tight text-sidebar-foreground">{name}</p>
+            {email ? (
+              <p className="truncate text-[11px] leading-tight text-muted-foreground">{email}</p>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </div>
   );

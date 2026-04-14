@@ -50,6 +50,11 @@ export type Room = OrganizationScope & {
    * Use this for future per-bed booking/inventory; `bedSize` remains the human description.
    */
   bedCount: number;
+  /**
+   * How many physical rooms use this same configuration (name, rates, amenities).
+   * e.g. `2` when you operate two identical “Deluxe” rooms as one listing row.
+   */
+  unitCount: number;
   /** Bed configuration label, e.g. "King", "2 × Twin", "Twin bunks". */
   bedSize?: string;
   /** @deprecated Prefer `bedSize`; kept for older documents. */

@@ -32,11 +32,14 @@ type PropertyHeaderSwitcherProps = {
   propertyId: string;
   /** Full-width trigger for the property sidebar rail. */
   sidebar?: boolean;
+  /** Narrow icon-only trigger when the property sidebar is collapsed. */
+  sidebarCollapsed?: boolean;
 };
 
 export function PropertyHeaderSwitcher({
   propertyId,
   sidebar = false,
+  sidebarCollapsed = false,
 }: PropertyHeaderSwitcherProps) {
   const router = useRouter();
 
@@ -51,6 +54,8 @@ export function PropertyHeaderSwitcher({
   const label = property?.name ?? "Property";
   const initial = property ? propertyInitial(property.name) : "P";
 
+  const compactSidebar = sidebar && sidebarCollapsed;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -60,9 +65,11 @@ export function PropertyHeaderSwitcher({
             size={sidebar ? "xs" : "sm"}
             className={cn(
               "font-medium has-data-[icon=inline-end]:pr-1",
-              sidebar
+              sidebar && !compactSidebar
                 ? "h-7 w-full gap-1 rounded-md px-1.5 py-0 text-left text-sidebar-foreground hover:bg-sidebar-accent/80"
-                : "h-9 gap-2 rounded-lg px-2 has-data-[icon=inline-end]:pr-1.5 text-foreground hover:bg-muted/80",
+                : compactSidebar
+                  ? "h-8 w-full justify-center gap-0 rounded-md px-0 text-sidebar-foreground hover:bg-sidebar-accent/80"
+                  : "h-9 gap-2 rounded-lg px-2 has-data-[icon=inline-end]:pr-1.5 text-foreground hover:bg-muted/80",
             )}
           />
         }
@@ -70,28 +77,32 @@ export function PropertyHeaderSwitcher({
         <span
           className={cn(
             "flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-pink-500 to-rose-600 font-semibold text-white shadow-sm",
-            sidebar ? "size-5 text-[9px]" : "size-7 text-[11px]",
+            compactSidebar ? "size-7 text-[11px]" : sidebar ? "size-5 text-[9px]" : "size-7 text-[11px]",
           )}
           aria-hidden
         >
           {initial}
         </span>
-        <span
-          className={cn(
-            "min-w-0 flex-1 truncate tracking-[-0.02em]",
-            sidebar ? "text-left text-[12px] leading-tight" : "text-[13px] max-w-[160px] sm:max-w-[220px]",
-          )}
-        >
-          {propertyQuery.isLoading ? "…" : label}
-        </span>
-        <ChevronDownIcon
-          data-icon="inline-end"
-          className={cn(
-            "shrink-0 text-muted-foreground opacity-80",
-            sidebar ? "size-3" : "size-3.5",
-          )}
-          aria-hidden
-        />
+        {!compactSidebar ? (
+          <>
+            <span
+              className={cn(
+                "min-w-0 flex-1 truncate tracking-[-0.02em]",
+                sidebar ? "text-left text-[12px] leading-tight" : "text-[13px] max-w-[160px] sm:max-w-[220px]",
+              )}
+            >
+              {propertyQuery.isLoading ? "…" : label}
+            </span>
+            <ChevronDownIcon
+              data-icon="inline-end"
+              className={cn(
+                "shrink-0 text-muted-foreground opacity-80",
+                sidebar ? "size-3" : "size-3.5",
+              )}
+              aria-hidden
+            />
+          </>
+        ) : null}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-[200px]" sideOffset={6}>
         <DropdownMenuItem

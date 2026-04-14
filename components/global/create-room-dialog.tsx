@@ -19,6 +19,7 @@ const EMPTY_FORM: CreateRoomPayload = {
   status: "active",
   maxGuests: 2,
   bedCount: 1,
+  unitCount: 1,
   amenities: [],
 };
 
@@ -72,6 +73,7 @@ export function CreateRoomDialog({
         floor: room.floor,
         maxGuests: room.maxGuests,
         bedCount: room.bedCount ?? 1,
+        unitCount: room.unitCount ?? 1,
         bedSize: room.bedSize ?? room.bedSummary,
         priceWeekday: room.priceWeekday,
         priceWeekend: room.priceWeekend,
@@ -278,6 +280,26 @@ export function CreateRoomDialog({
                   className={cn(pillInput, "w-12 text-center tabular-nums")}
                   required
                   title="Physical beds or sleep surfaces (each bunk level counts as one bed)"
+                />
+              </div>
+
+              <div className={pill}>
+                <span className="text-xs text-muted-foreground">No. of rooms</span>
+                <input
+                  id="room-unit-count"
+                  name="unitCount"
+                  type="number"
+                  min={1}
+                  value={form.unitCount ?? 1}
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      unitCount: Number.parseInt(event.target.value, 10) || 1,
+                    }))
+                  }
+                  className={cn(pillInput, "w-12 text-center tabular-nums")}
+                  required
+                  title="How many physical rooms share this name, rates, and amenities (e.g. 2 identical Deluxe rooms)"
                 />
               </div>
 

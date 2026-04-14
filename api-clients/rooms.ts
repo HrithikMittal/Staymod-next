@@ -14,6 +14,8 @@ export type RoomListItem = {
   maxGuests: number;
   /** Physical beds / sleep surfaces (e.g. bunks each count). */
   bedCount: number;
+  /** Identical rooms of this type (e.g. 2 Deluxe rooms). */
+  unitCount: number;
   bedSize?: string;
   /** @deprecated Prefer `bedSize` */
   bedSummary?: string;
@@ -50,6 +52,7 @@ export type CreateRoomPayload = {
   floor?: string;
   maxGuests?: number;
   bedCount?: number;
+  unitCount?: number;
   bedSize?: string;
   /** Legacy; server maps to `bedSize` if `bedSize` is omitted */
   bedSummary?: string;
