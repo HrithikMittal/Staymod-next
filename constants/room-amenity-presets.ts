@@ -20,3 +20,22 @@ export const ROOM_AMENITY_PRESET_LABELS = [
 ] as const;
 
 export type RoomAmenityPresetLabel = (typeof ROOM_AMENITY_PRESET_LABELS)[number];
+
+const PRESET_LABEL_SET = new Set<string>(ROOM_AMENITY_PRESET_LABELS as readonly string[]);
+
+/** Splits stored amenities into preset checkboxes vs free-text “additional” for the form. */
+export function splitAmenitiesForEditForm(amenities: string[]): {
+  selectedPresets: string[];
+  extraText: string;
+} {
+  const selectedPresets: string[] = [];
+  const extras: string[] = [];
+  for (const a of amenities) {
+    if (PRESET_LABEL_SET.has(a)) {
+      selectedPresets.push(a);
+    } else {
+      extras.push(a);
+    }
+  }
+  return { selectedPresets, extraText: extras.join(", ") };
+}

@@ -9,7 +9,9 @@ export {
 } from "./properties";
 export {
   createRoom,
+  deleteRoom,
   fetchRooms,
+  updateRoom,
   type CreateRoomPayload,
   type ListRoomsResponse,
   type RoomListItem,

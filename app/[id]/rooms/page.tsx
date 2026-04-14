@@ -1,18 +1,24 @@
 "use client";
 
+import type { ListRoomsResponse, RoomListItem } from "@/api-clients";
+import { CreateRoomDialog } from "@/components/global/create-room-dialog";
+import { DeleteRoomDialog } from "@/components/global/delete-room-dialog";
+import { RoomListItemRow } from "@/components/global/room-list-item";
+import { Button } from "@/components/ui/button";
+import { useApiQuery } from "@/hooks";
 import { PlusIcon } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 
-import type { ListRoomsResponse } from "@/api-clients";
-import { CreateRoomDialog } from "@/components/global/create-room-dialog";
-import { Button } from "@/components/ui/button";
-import { useApiQuery } from "@/hooks";
-
 export default function PropertyRoomsPage() {
   const params = useParams();
   const propertyId = typeof params.id === "string" ? params.id : "";
-  const [createOpen, setCreateOpen] = useState(false);
+
+  const [roomDialog, setRoomDialog] = useState<{
+    open: boolean;
+    room: RoomListItem | null;
+  }>({ open: false, room: null });
+  const [deletingRoom, setDeletingRoom] = useState<RoomListItem | null>(null);
 
   const roomsQuery = useApiQuery<ListRoomsResponse>(
     ["rooms", propertyId],
@@ -20,6 +26,14 @@ export default function PropertyRoomsPage() {
     undefined,
     { enabled: Boolean(propertyId) },
   );
+
+  function openCreate() {
+    setRoomDialog({ open: true, room: null });
+  }
+
+  function openEdit(room: RoomListItem) {
+    setRoomDialog({ open: true, room });
+  }
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 pt-3 pb-8 md:px-6">
@@ -30,13 +44,13 @@ export default function PropertyRoomsPage() {
             Bookable units for this property — add rooms, suites, or beds.
           </p>
         </div>
-        <Button type="button" onClick={() => setCreateOpen(true)} disabled={!propertyId}>
+        <Button type="button" onClick={openCreate} disabled={!propertyId}>
           <PlusIcon data-icon="inline-start" />
           New room
         </Button>
       </div>
 
-      <section className="overflow-hidden rounded-2xl border border-border/70 bg-card">
+      <section className="overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm">
         {roomsQuery.isLoading ? (
           <p className="px-5 py-8 text-sm text-muted-foreground">Loading rooms...</p>
         ) : roomsQuery.isError ? (
@@ -44,62 +58,47 @@ export default function PropertyRoomsPage() {
         ) : (roomsQuery.data?.rooms.length ?? 0) === 0 ? (
           <div className="flex flex-col items-start gap-3 px-5 py-10">
             <p className="text-sm text-muted-foreground">No rooms yet.</p>
-            <Button type="button" variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
+            <Button type="button" variant="outline" size="sm" onClick={openCreate}>
               Add your first room
             </Button>
           </div>
         ) : (
-          <ul className="divide-y divide-border/80">
+          <ul className="list-none">
             {roomsQuery.data?.rooms.map((room) => (
-              <li
+              <RoomListItemRow
                 key={room._id}
-                className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5"
-              >
-                <div className="min-w-0">
-                  <p className="font-medium">{room.name}</p>
-                  {room.tagline ? (
-                    <p className="text-sm text-muted-foreground">{room.tagline}</p>
-                  ) : null}
-                  <p className="text-sm text-muted-foreground">
-                    {room.type.replace(/_/g, " ")}
-                    {room.floor ? ` · Floor ${room.floor}` : ""}
-                    {` · Up to ${room.maxGuests} guest${room.maxGuests === 1 ? "" : "s"}`}
-                    {(room.bedSize ?? room.bedSummary)
-                      ? ` · ${room.bedSize ?? room.bedSummary}`
-                      : ""}
-                  </p>
-                  {(room.priceWeekday != null || room.priceWeekend != null) && (
-                    <p className="text-xs text-muted-foreground">
-                      {room.priceWeekday != null && (
-                        <span>Weekday {room.priceWeekday}</span>
-                      )}
-                      {room.priceWeekday != null && room.priceWeekend != null ? " · " : null}
-                      {room.priceWeekend != null && (
-                        <span>Weekend {room.priceWeekend}</span>
-                      )}
-                    </p>
-                  )}
-                  {room.amenities?.length ? (
-                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                      {room.amenities.join(" · ")}
-                    </p>
-                  ) : null}
-                </div>
-                <span className="shrink-0 rounded-md border border-border/80 bg-muted/40 px-2 py-0.5 text-xs capitalize text-muted-foreground">
-                  {room.status.replace(/_/g, " ")}
-                </span>
-              </li>
+                room={room}
+                onEdit={openEdit}
+                onDelete={setDeletingRoom}
+              />
             ))}
           </ul>
         )}
       </section>
 
       {propertyId ? (
-        <CreateRoomDialog
-          propertyId={propertyId}
-          open={createOpen}
-          onOpenChange={setCreateOpen}
-        />
+        <>
+          <CreateRoomDialog
+            propertyId={propertyId}
+            open={roomDialog.open}
+            room={roomDialog.room}
+            onOpenChange={(open) => {
+              if (!open) {
+                setRoomDialog({ open: false, room: null });
+              }
+            }}
+          />
+          <DeleteRoomDialog
+            propertyId={propertyId}
+            room={deletingRoom}
+            open={deletingRoom !== null}
+            onOpenChange={(open) => {
+              if (!open) {
+                setDeletingRoom(null);
+              }
+            }}
+          />
+        </>
       ) : null}
     </main>
   );

@@ -1,18 +1,15 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { BedDoubleIcon } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 import type { CreateRoomPayload, RoomListItem } from "@/api-clients";
+import { createRoom, updateRoom } from "@/api-clients/rooms";
 import { RoomAmenityChecklist } from "@/components/global/room-amenity-checklist";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { useApiMutation } from "@/hooks";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { splitAmenitiesForEditForm } from "@/constants/room-amenity-presets";
 import { cn } from "@/lib/utils";
 import { ROOM_STATUSES, ROOM_TYPES } from "@/types/room";
 
@@ -21,6 +18,7 @@ const EMPTY_FORM: CreateRoomPayload = {
   type: "double",
   status: "active",
   maxGuests: 2,
+  bedCount: 1,
   amenities: [],
 };
 
@@ -44,13 +42,52 @@ type CreateRoomDialogProps = {
   propertyId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** When set, the dialog updates this room; otherwise it creates a new one. */
+  room?: RoomListItem | null;
 };
 
-export function CreateRoomDialog({ propertyId, open, onOpenChange }: CreateRoomDialogProps) {
+export function CreateRoomDialog({
+  propertyId,
+  open,
+  onOpenChange,
+  room = null,
+}: CreateRoomDialogProps) {
   const queryClient = useQueryClient();
+  const isEdit = Boolean(room);
   const [form, setForm] = useState<CreateRoomPayload>(EMPTY_FORM);
   const [selectedPresetAmenities, setSelectedPresetAmenities] = useState<string[]>([]);
   const [extraAmenitiesText, setExtraAmenitiesText] = useState("");
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    if (room) {
+      setForm({
+        name: room.name,
+        type: room.type as CreateRoomPayload["type"],
+        status: (room.status as CreateRoomPayload["status"]) ?? "active",
+        tagline: room.tagline,
+        description: room.description,
+        floor: room.floor,
+        maxGuests: room.maxGuests,
+        bedCount: room.bedCount ?? 1,
+        bedSize: room.bedSize ?? room.bedSummary,
+        priceWeekday: room.priceWeekday,
+        priceWeekend: room.priceWeekend,
+        isActive: room.isActive,
+        sortOrder: room.sortOrder,
+        amenities: [],
+      });
+      const { selectedPresets, extraText } = splitAmenitiesForEditForm(room.amenities ?? []);
+      setSelectedPresetAmenities(selectedPresets);
+      setExtraAmenitiesText(extraText);
+    } else {
+      setForm(EMPTY_FORM);
+      setSelectedPresetAmenities([]);
+      setExtraAmenitiesText("");
+    }
+  }, [open, room?._id, room?.updatedAt]);
 
   function handleOpenChange(next: boolean) {
     onOpenChange(next);
@@ -61,16 +98,16 @@ export function CreateRoomDialog({ propertyId, open, onOpenChange }: CreateRoomD
     }
   }
 
-  const createRoomMutation = useApiMutation<{ room: RoomListItem }, CreateRoomPayload>(
-    `/api/properties/${propertyId}/rooms`,
-    undefined,
-    {
-      onSuccess: async () => {
-        await queryClient.invalidateQueries({ queryKey: ["rooms", propertyId] });
-        handleOpenChange(false);
-      },
+  const saveMutation = useMutation({
+    mutationFn: (payload: CreateRoomPayload) =>
+      room
+        ? updateRoom(propertyId, room._id, payload)
+        : createRoom(propertyId, payload),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["rooms", propertyId] });
+      handleOpenChange(false);
     },
-  );
+  });
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -79,7 +116,7 @@ export function CreateRoomDialog({ propertyId, open, onOpenChange }: CreateRoomD
       .map((s) => s.trim())
       .filter(Boolean);
     const amenities = [...new Set([...selectedPresetAmenities, ...extra])];
-    createRoomMutation.mutate({
+    saveMutation.mutate({
       ...form,
       amenities,
     });
@@ -100,6 +137,11 @@ export function CreateRoomDialog({ propertyId, open, onOpenChange }: CreateRoomD
     "placeholder:text-muted-foreground/60",
   );
 
+  const breadcrumb = isEdit ? "Rooms · Edit room" : "Rooms · New room";
+  const dialogTitle = isEdit ? "Edit room" : "New room";
+  const submitLabel = isEdit ? "Save changes" : "Create room";
+  const pendingLabel = isEdit ? "Saving…" : "Creating…";
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
@@ -109,13 +151,12 @@ export function CreateRoomDialog({ propertyId, open, onOpenChange }: CreateRoomD
         )}
         showCloseButton
       >
-        <DialogTitle className="sr-only">New room</DialogTitle>
+        <DialogTitle className="sr-only">{dialogTitle}</DialogTitle>
 
         <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit}>
-          {/* Hero: breadcrumb, icon, title, tagline, pills */}
           <div className="shrink-0 space-y-4 px-8 pt-11 pb-2 pr-14">
             <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-              Rooms · New room
+              {breadcrumb}
             </p>
 
             <div className="flex items-start gap-3">
@@ -217,6 +258,26 @@ export function CreateRoomDialog({ propertyId, open, onOpenChange }: CreateRoomD
                   }
                   className={cn(pillInput, "w-12 text-center tabular-nums")}
                   required
+                />
+              </div>
+
+              <div className={pill}>
+                <span className="text-xs text-muted-foreground">No. of beds</span>
+                <input
+                  id="room-bed-count"
+                  name="bedCount"
+                  type="number"
+                  min={1}
+                  value={form.bedCount ?? 1}
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      bedCount: Number.parseInt(event.target.value, 10) || 1,
+                    }))
+                  }
+                  className={cn(pillInput, "w-12 text-center tabular-nums")}
+                  required
+                  title="Physical beds or sleep surfaces (each bunk level counts as one bed)"
                 />
               </div>
 
@@ -343,8 +404,8 @@ export function CreateRoomDialog({ propertyId, open, onOpenChange }: CreateRoomD
                 />
               </div>
 
-              {createRoomMutation.error ? (
-                <p className="text-sm text-destructive">{createRoomMutation.error.message}</p>
+              {saveMutation.error ? (
+                <p className="text-sm text-destructive">{saveMutation.error.message}</p>
               ) : null}
             </div>
           </div>
@@ -358,8 +419,8 @@ export function CreateRoomDialog({ propertyId, open, onOpenChange }: CreateRoomD
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={createRoomMutation.isPending} className="min-w-[7.5rem]">
-              {createRoomMutation.isPending ? "Creating…" : "Create room"}
+            <Button type="submit" disabled={saveMutation.isPending} className="min-w-[7.5rem]">
+              {saveMutation.isPending ? pendingLabel : submitLabel}
             </Button>
           </div>
         </form>

@@ -9,4 +9,5 @@ export {
   createRoomDocument,
   parseCreateRoomInput,
   parsePropertyId,
+  parseRoomId,
 } from "./room";

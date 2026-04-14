@@ -107,6 +107,13 @@ export function parsePropertyId(value: unknown): ObjectId {
   return new ObjectId(value);
 }
 
+export function parseRoomId(value: unknown): ObjectId {
+  if (typeof value !== "string" || !ObjectId.isValid(value)) {
+    throw new Error("roomId must be a valid id.");
+  }
+  return new ObjectId(value);
+}
+
 /** Validates JSON body for creating a room (parent `propertyId` is enforced by the route handler). */
 export function parseCreateRoomInput(payload: unknown): CreateRoomInput {
   if (!payload || typeof payload !== "object") {
@@ -134,6 +141,7 @@ export function parseCreateRoomInput(payload: unknown): CreateRoomInput {
     description: ensureOptionalString(input.description),
     floor: ensureOptionalString(input.floor),
     maxGuests: ensurePositiveInt(input.maxGuests, "maxGuests", 2),
+    bedCount: ensurePositiveInt(input.bedCount, "bedCount", 1),
     bedSize: bedSize ?? legacyBed,
     priceWeekday: ensureOptionalPrice(input.priceWeekday, "priceWeekday"),
     priceWeekend: ensureOptionalPrice(input.priceWeekend, "priceWeekend"),

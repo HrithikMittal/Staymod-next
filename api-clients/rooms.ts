@@ -12,6 +12,8 @@ export type RoomListItem = {
   description?: string;
   floor?: string;
   maxGuests: number;
+  /** Physical beds / sleep surfaces (e.g. bunks each count). */
+  bedCount: number;
   bedSize?: string;
   /** @deprecated Prefer `bedSize` */
   bedSummary?: string;
@@ -47,6 +49,7 @@ export type CreateRoomPayload = {
   description?: string;
   floor?: string;
   maxGuests?: number;
+  bedCount?: number;
   bedSize?: string;
   /** Legacy; server maps to `bedSize` if `bedSize` is omitted */
   bedSummary?: string;
@@ -65,5 +68,18 @@ export function createRoom(propertyId: string, payload: CreateRoomPayload) {
   return apiFetch<{ room: RoomListItem }>(`/api/properties/${propertyId}/rooms`, {
     method: "POST",
     json: payload,
+  });
+}
+
+export function updateRoom(propertyId: string, roomId: string, payload: CreateRoomPayload) {
+  return apiFetch<{ room: RoomListItem }>(`/api/properties/${propertyId}/rooms/${roomId}`, {
+    method: "PATCH",
+    json: payload,
+  });
+}
+
+export function deleteRoom(propertyId: string, roomId: string) {
+  return apiFetch<{ deleted: boolean }>(`/api/properties/${propertyId}/rooms/${roomId}`, {
+    method: "DELETE",
   });
 }

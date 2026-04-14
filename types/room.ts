@@ -45,7 +45,12 @@ export type Room = OrganizationScope & {
   floor?: string;
   /** Maximum guests the room can accommodate. */
   maxGuests: number;
-  /** Bed configuration label, e.g. "King", "2 × Twin". */
+  /**
+   * Distinct physical beds or sleep surfaces to sell or assign (bunks count as separate beds).
+   * Use this for future per-bed booking/inventory; `bedSize` remains the human description.
+   */
+  bedCount: number;
+  /** Bed configuration label, e.g. "King", "2 × Twin", "Twin bunks". */
   bedSize?: string;
   /** @deprecated Prefer `bedSize`; kept for older documents. */
   bedSummary?: string;

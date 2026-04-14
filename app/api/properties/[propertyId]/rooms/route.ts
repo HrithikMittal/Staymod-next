@@ -59,12 +59,19 @@ export async function GET(_req: Request, context: RouteContext) {
     .toArray();
 
   return NextResponse.json({
-    rooms: rooms.map((r) => ({
-      ...r,
-      _id: r._id.toString(),
-      propertyId: r.propertyId.toString(),
-      amenities: Array.isArray(r.amenities) ? r.amenities : [],
-    })),
+    rooms: rooms.map((r) => {
+      const bedCount =
+        typeof r.bedCount === "number" && Number.isFinite(r.bedCount) && r.bedCount >= 1
+          ? Math.floor(r.bedCount)
+          : 1;
+      return {
+        ...r,
+        _id: r._id.toString(),
+        propertyId: r.propertyId.toString(),
+        amenities: Array.isArray(r.amenities) ? r.amenities : [],
+        bedCount,
+      };
+    }),
   });
 }
 
