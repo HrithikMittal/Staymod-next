@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import type { ListPropertiesResponse } from "@/api-clients";
+import { HomeToolbar } from "@/components/global/home-toolbar";
 import { CreatePropertyDialog } from "@/components/global/create-property-dialog";
 import { PropertiesEmptyState } from "@/components/global/properties/properties-empty-state";
 import { PropertyListRow } from "@/components/global/properties/property-list-row";
@@ -46,6 +47,7 @@ export function PropertiesHome() {
   return (
     <main className="relative flex min-h-0 flex-1 flex-col bg-gradient-to-b from-muted/45 via-background to-background">
       <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-8 px-4 py-10 md:px-8">
+        <HomeToolbar />
         <header className="flex flex-col gap-6 border-b border-border/60 pb-8 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex flex-col gap-1.5">
             <div className="flex flex-wrap items-center gap-2.5">

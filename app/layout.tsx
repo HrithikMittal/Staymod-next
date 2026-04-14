@@ -2,7 +2,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 
-import { AppHeader, AppProviders } from "@/components/global";
+import { AppProviders } from "@/components/global";
 
 import "./globals.css";
 
@@ -34,8 +34,7 @@ export default function RootLayout({
       >
         <body className="min-h-full flex flex-col bg-background text-foreground">
           <AppProviders>
-            <AppHeader />
-            <div className="flex flex-1 flex-col">{children}</div>
+            <div className="flex min-h-0 flex-1 flex-col">{children}</div>
           </AppProviders>
         </body>
       </html>

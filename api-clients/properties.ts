@@ -33,6 +33,10 @@ export function fetchProperties() {
   return apiFetch<ListPropertiesResponse>("/api/properties");
 }
 
+export function fetchProperty(propertyId: string) {
+  return apiFetch<{ property: PropertyListItem }>(`/api/properties/${propertyId}`);
+}
+
 export function createProperty(payload: CreatePropertyPayload) {
   return apiFetch<{ property: PropertyListItem }>("/api/properties", {
     method: "POST",

@@ -60,6 +60,37 @@ function ensureSortOrder(value: unknown): number {
   return n;
 }
 
+/** Optional non-negative price in property currency (major units). */
+function ensureOptionalPrice(value: unknown, label: string): number | undefined {
+  if (value === undefined || value === null || value === "") {
+    return undefined;
+  }
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n) || n < 0) {
+    throw new Error(`${label} must be a non-negative number.`);
+  }
+  return n;
+}
+
+function ensureAmenities(value: unknown): string[] {
+  if (value === undefined || value === null) {
+    return [];
+  }
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  if (typeof value === "string") {
+    return value
+      .split(/[,;\n]/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
 function slugify(name: string): string {
   return name
     .toLowerCase()
@@ -89,15 +120,24 @@ export function parseCreateRoomInput(payload: unknown): CreateRoomInput {
     throw new Error("slug could not be generated from name.");
   }
 
+  const bedSize = ensureOptionalString(input.bedSize);
+  const legacyBed = ensureOptionalString(input.bedSummary);
+
   return {
     name,
     slug,
     type: ensureRoomType(input.type),
-    status: ensureRoomStatus(input.status ?? "active"),
+    status: ensureRoomStatus(
+      typeof input.status === "string" && input.status.trim() ? input.status : "active",
+    ),
+    tagline: ensureOptionalString(input.tagline),
+    description: ensureOptionalString(input.description),
     floor: ensureOptionalString(input.floor),
     maxGuests: ensurePositiveInt(input.maxGuests, "maxGuests", 2),
-    bedSummary: ensureOptionalString(input.bedSummary),
-    description: ensureOptionalString(input.description),
+    bedSize: bedSize ?? legacyBed,
+    priceWeekday: ensureOptionalPrice(input.priceWeekday, "priceWeekday"),
+    priceWeekend: ensureOptionalPrice(input.priceWeekend, "priceWeekend"),
+    amenities: ensureAmenities(input.amenities),
     isActive: typeof input.isActive === "boolean" ? input.isActive : true,
     sortOrder: ensureSortOrder(input.sortOrder),
   };

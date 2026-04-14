@@ -25,6 +25,8 @@ export type RoomStatus = (typeof ROOM_STATUSES)[number];
 /**
  * Bookable unit under a property. Includes **`orgId`** (via {@link OrganizationScope}) so
  * MongoDB queries can scope by organization without joining through `properties` every time.
+ *
+ * **Prices** use the same currency as the parent property (`property.currency`); store major units (e.g. INR).
  */
 export type Room = OrganizationScope & {
   _id: ObjectId;
@@ -35,13 +37,24 @@ export type Room = OrganizationScope & {
   slug: string;
   type: RoomType;
   status: RoomStatus;
+  /** Short marketing line shown in listings. */
+  tagline?: string;
+  /** Longer copy for detail views. */
+  description?: string;
   /** Display label, e.g. "3", "G", "Mezzanine". */
   floor?: string;
-  /** Maximum guests for this room. */
+  /** Maximum guests the room can accommodate. */
   maxGuests: number;
-  /** Short label, e.g. "1 king" or "2 × twin". */
+  /** Bed configuration label, e.g. "King", "2 × Twin". */
+  bedSize?: string;
+  /** @deprecated Prefer `bedSize`; kept for older documents. */
   bedSummary?: string;
-  description?: string;
+  /** Standard nightly rate — weekday (Mon–Thu or property-defined). */
+  priceWeekday?: number;
+  /** Standard nightly rate — weekend (Fri–Sun or property-defined). */
+  priceWeekend?: number;
+  /** Feature tags, e.g. Wi‑Fi, balcony. */
+  amenities: string[];
   isActive: boolean;
   /** Lower sorts first when listing rooms. */
   sortOrder: number;

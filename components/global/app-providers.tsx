@@ -19,9 +19,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       {children}
-      {process.env.NODE_ENV === "development" ? (
-        <ReactQueryDevtools buttonPosition="bottom-left" initialIsOpen={false} />
-      ) : null}
+    
     </QueryClientProvider>
   );
 }
