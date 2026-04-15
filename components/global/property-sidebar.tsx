@@ -5,6 +5,7 @@ import {
   CalendarRangeIcon,
   ClipboardListIcon,
   LayoutDashboardIcon,
+  PlugZapIcon,
   PanelLeftCloseIcon,
   PanelLeftIcon,
 } from "lucide-react";
@@ -43,6 +44,12 @@ function navItems(propertyId: string) {
       label: "Bookings",
       icon: ClipboardListIcon,
       match: (pathname: string) => pathname.startsWith(`/${propertyId}/bookings`),
+    },
+    {
+      href: `/${propertyId}/integrations`,
+      label: "Integrations",
+      icon: PlugZapIcon,
+      match: (pathname: string) => pathname.startsWith(`/${propertyId}/integrations`),
     },
   ] as const;
 }
