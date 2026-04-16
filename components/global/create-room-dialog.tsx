@@ -6,6 +6,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 
 import type { CreateRoomPayload, ListRoomTagsResponse, RoomListItem } from "@/api-clients";
 import { createRoom, createRoomImageUploadUrl, updateRoom } from "@/api-clients/rooms";
+import { RoomAmenityChecklist } from "@/components/global/room-amenity-checklist";
 import { RoomNumberFields } from "@/components/global/room-number-fields";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -16,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useApiQuery } from "@/hooks";
+import { splitAmenitiesForEditForm } from "@/constants/room-amenity-presets";
 import { cn } from "@/lib/utils";
 import { ROOM_STATUSES, ROOM_TYPES } from "@/types/room";
 
@@ -87,6 +89,8 @@ export function CreateRoomDialog({
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
   const [uploadingImageIndex, setUploadingImageIndex] = useState<number | null>(null);
   const [draggingImageIndex, setDraggingImageIndex] = useState<number | null>(null);
+  /** Free-text amenities line; preset checkboxes live in `form.amenities`. */
+  const [amenitiesExtraText, setAmenitiesExtraText] = useState("");
   const imageStripRef = useRef<HTMLDivElement | null>(null);
   const imageStripDragState = useRef<{
     active: boolean;
@@ -113,6 +117,7 @@ export function CreateRoomDialog({
     }
     if (room) {
       const unitCount = room.unitCount ?? 1;
+      const amenitySplit = splitAmenitiesForEditForm(room.amenities ?? []);
       setForm({
         name: room.name,
         type: room.type as CreateRoomPayload["type"],
@@ -139,8 +144,9 @@ export function CreateRoomDialog({
         tagNames: room.tags?.map((tag) => tag.name) ?? [],
         isActive: room.isActive,
         sortOrder: room.sortOrder,
-        amenities: room.amenities ?? [],
+        amenities: amenitySplit.selectedPresets,
       });
+      setAmenitiesExtraText(amenitySplit.extraText);
       const initialRoomImages = room.roomImages?.length
         ? room.roomImages.map((img, idx) => ({
             url: img.url,
@@ -154,6 +160,7 @@ export function CreateRoomDialog({
       setForm(EMPTY_FORM);
       setRoomImages([{ url: "", sortOrder: 0 }]);
       setTagNamesText("");
+      setAmenitiesExtraText("");
     }
     setRoomNumberError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- room identity via _id + updatedAt
@@ -165,6 +172,7 @@ export function CreateRoomDialog({
       setForm(EMPTY_FORM);
       setRoomImages([{ url: "", sortOrder: 0 }]);
       setTagNamesText("");
+      setAmenitiesExtraText("");
       setImageUploadError(null);
       setUploadingImageIndex(null);
       setDraggingImageIndex(null);
@@ -235,12 +243,30 @@ export function CreateRoomDialog({
       setRoomNumberError("Enter a room number for each unit, or clear all room number fields.");
       return;
     }
+    const extraAmenities = amenitiesExtraText
+      .split(/[,;\n]/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const mergedAmenities = [...new Set([...(form.amenities ?? []), ...extraAmenities])];
     saveMutation.mutate({
       ...form,
+      amenities: mergedAmenities,
       tagNames: [...new Set(parsedTagNames)],
       roomImages: normalizedImages,
       imageUrls,
       roomNumbers: allEmpty ? [] : nums,
+    });
+  }
+
+  function handleAmenityPresetToggle(label: string, checked: boolean) {
+    setForm((prev) => {
+      const next = new Set(prev.amenities ?? []);
+      if (checked) {
+        next.add(label);
+      } else {
+        next.delete(label);
+      }
+      return { ...prev, amenities: Array.from(next) };
     });
   }
 
@@ -474,6 +500,26 @@ export function CreateRoomDialog({
                   placeholder="Write a description…"
                   className={descriptionClass}
                   rows={5}
+                />
+              </div>
+
+              <hr className="border-border/50" />
+
+              <div className="rounded-xl border border-border/60 bg-muted/25 p-4 sm:p-5">
+                <div className="mb-3">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Facilities & amenities
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Select features that apply to this room, or add more below.
+                  </p>
+                </div>
+                <RoomAmenityChecklist
+                  embedded
+                  selected={form.amenities ?? []}
+                  onToggle={handleAmenityPresetToggle}
+                  extraText={amenitiesExtraText}
+                  onExtraTextChange={setAmenitiesExtraText}
                 />
               </div>
 
