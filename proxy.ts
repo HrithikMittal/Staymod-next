@@ -1,6 +1,13 @@
-import { clerkMiddleware } from "@clerk/nextjs/server";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-export default clerkMiddleware();
+/** `/` only — not `/integration-guide`, `/sign-in`, etc. */
+const isPrivateHomeRoute = createRouteMatcher([/^\/$/]);
+
+export default clerkMiddleware(async (auth, req) => {
+  if (isPrivateHomeRoute(req)) {
+    await auth.protect();
+  }
+});
 
 /**
  * Must stay inline: Next.js requires a statically analyzable `matcher` array here
