@@ -2,6 +2,7 @@
 
 import type { BookingListItem } from "@/api-clients/bookings";
 import type { RoomListItem } from "@/api-clients/rooms";
+import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
@@ -69,6 +70,8 @@ type DateBookingsSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   dateKey: string | null;
+  roomIdFilter?: string | null;
+  onRoomIdFilterChange?: (roomId: string | null) => void;
   propertyId: string;
   bookings: BookingListItem[];
   bookingsLoading: boolean;
@@ -80,6 +83,8 @@ export function DateBookingsSheet({
   open,
   onOpenChange,
   dateKey,
+  roomIdFilter = null,
+  onRoomIdFilterChange,
   propertyId,
   bookings,
   bookingsLoading,
@@ -96,8 +101,16 @@ export function DateBookingsSheet({
     if (!dateKey) {
       return [];
     }
-    return bookings.filter((b) => bookingIncludesUtcNight(b.checkIn, b.checkOut, dateKey));
-  }, [bookings, dateKey]);
+    return bookings.filter((b) => {
+      if (!bookingIncludesUtcNight(b.checkIn, b.checkOut, dateKey)) {
+        return false;
+      }
+      if (!roomIdFilter) {
+        return true;
+      }
+      return Boolean(b.rooms?.[roomIdFilter]);
+    });
+  }, [bookings, dateKey, roomIdFilter]);
 
   const sorted = useMemo(() => {
     return [...forNight].sort((a, b) => {
@@ -112,6 +125,7 @@ export function DateBookingsSheet({
   }, [forNight]);
 
   const title = dateKey ? formatSheetDate(dateKey) : "";
+  const filterRoomName = roomIdFilter != null ? (roomById.get(roomIdFilter)?.name ?? "Selected room") : null;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -119,6 +133,35 @@ export function DateBookingsSheet({
         <SheetHeader className="border-border/60 border-b px-4 py-4 text-left">
           <SheetTitle>Bookings</SheetTitle>
           <SheetDescription className="text-foreground font-medium">{title}</SheetDescription>
+          <div className="mt-3 flex items-center gap-2">
+            <select
+              value={roomIdFilter ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                onRoomIdFilterChange?.(v ? v : null);
+              }}
+              className="h-8 min-w-0 flex-1 rounded-md border border-border bg-background px-2 text-xs text-foreground"
+              aria-label="Filter bookings by room"
+            >
+              <option value="">All rooms</option>
+              {(rooms ?? []).map((r) => (
+                <option key={r._id} value={r._id}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-8 px-2 text-xs"
+              onClick={() => onRoomIdFilterChange?.(null)}
+              disabled={!roomIdFilter}
+            >
+              Clear
+            </Button>
+          </div>
+          {filterRoomName ? <p className="text-xs text-muted-foreground">Showing: {filterRoomName}</p> : null}
         </SheetHeader>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">

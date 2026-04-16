@@ -36,6 +36,7 @@ export type RoomAvailabilityCellProps =
       variant: "unit";
       isFull: boolean;
       onCreateBooking?: () => void;
+      onViewBookings?: () => void;
     };
 
 /** Nightly rate + edit popover — use on the room listing header row only. */
@@ -156,8 +157,18 @@ function ListingPriceCell({
 }
 
 /** Free/Full only — use on unit (room number) rows. */
-function UnitStatusBadge({ isFull, onCreateBooking }: { isFull: boolean; onCreateBooking?: () => void }) {
-  const clickable = !isFull && Boolean(onCreateBooking);
+function UnitStatusBadge({
+  isFull,
+  onCreateBooking,
+  onViewBookings,
+}: {
+  isFull: boolean;
+  onCreateBooking?: () => void;
+  onViewBookings?: () => void;
+}) {
+  const clickable = isFull ? Boolean(onViewBookings) : Boolean(onCreateBooking);
+  const onClick = isFull ? onViewBookings : onCreateBooking;
+  const title = isFull ? "View bookings" : "Create booking";
   const Comp = clickable ? Button : "div";
   return (
     <Comp
@@ -165,8 +176,8 @@ function UnitStatusBadge({ isFull, onCreateBooking }: { isFull: boolean; onCreat
         ? {
             type: "button" as const,
             variant: "ghost" as const,
-            onClick: onCreateBooking,
-            title: "Create booking",
+            onClick,
+            title,
           }
         : {})}
       className={cn(
@@ -187,7 +198,13 @@ function UnitStatusBadge({ isFull, onCreateBooking }: { isFull: boolean; onCreat
 
 export function RoomAvailabilityCell(props: RoomAvailabilityCellProps) {
   if (props.variant === "unit") {
-    return <UnitStatusBadge isFull={props.isFull} onCreateBooking={props.onCreateBooking} />;
+    return (
+      <UnitStatusBadge
+        isFull={props.isFull}
+        onCreateBooking={props.onCreateBooking}
+        onViewBookings={props.onViewBookings}
+      />
+    );
   }
   return (
     <ListingPriceCell

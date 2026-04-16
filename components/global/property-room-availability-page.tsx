@@ -74,6 +74,7 @@ export function PropertyRoomAvailabilityPage() {
   const [from, setFrom] = useState(initial.from);
   const [to, setTo] = useState(initial.to);
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
+  const [selectedRoomIdFilter, setSelectedRoomIdFilter] = useState<string | null>(null);
   const [quickBookingForm, setQuickBookingForm] = useState<Partial<CreateBookingPayload> | null>(null);
   const quickBookingOpen = quickBookingForm !== null;
   const [isAtStart, setIsAtStart] = useState(true);
@@ -122,6 +123,11 @@ export function PropertyRoomAvailabilityPage() {
       checkOut: addOneDay(dateKey),
       status: "confirmed",
     });
+  }
+
+  function openBookingsForCell(roomId: string, dateKey: string) {
+    setSelectedRoomIdFilter(roomId);
+    setSelectedDateKey(dateKey);
   }
 
   function extendRange(direction: "left" | "right") {
@@ -228,7 +234,10 @@ export function PropertyRoomAvailabilityPage() {
                         <div className="grid grid-cols-[1fr_auto] items-center gap-1 px-1 py-2">
                           <button
                             type="button"
-                            onClick={() => setSelectedDateKey(day.dateKey)}
+                            onClick={() => {
+                              setSelectedRoomIdFilter(null);
+                              setSelectedDateKey(day.dateKey);
+                            }}
                             className={cn(
                               "hover:bg-muted/50 flex min-w-0 flex-col items-center rounded px-1 py-1 text-center transition-colors",
                               "focus-visible:ring-ring ring-offset-background focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
@@ -321,6 +330,9 @@ export function PropertyRoomAvailabilityPage() {
                                   ? undefined
                                   : () => openQuickBooking(row.roomId, cell.dateKey, row.unitLabel)
                               }
+                              onViewBookings={
+                                cell.isFull ? () => openBookingsForCell(row.roomId, cell.dateKey) : undefined
+                              }
                             />
                           </td>
                         ))}
@@ -339,9 +351,12 @@ export function PropertyRoomAvailabilityPage() {
         onOpenChange={(open) => {
           if (!open) {
             setSelectedDateKey(null);
+            setSelectedRoomIdFilter(null);
           }
         }}
         dateKey={selectedDateKey}
+        roomIdFilter={selectedRoomIdFilter}
+        onRoomIdFilterChange={setSelectedRoomIdFilter}
         propertyId={propertyId}
         bookings={bookingsQuery.data?.bookings ?? []}
         bookingsLoading={bookingsQuery.isLoading}

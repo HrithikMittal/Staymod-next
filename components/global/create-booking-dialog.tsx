@@ -258,6 +258,7 @@ function BookingForm({
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["bookings", propertyId] });
+      await queryClient.invalidateQueries({ queryKey: ["room-availability", propertyId] });
       onClose();
     },
   });
