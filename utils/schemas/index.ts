@@ -32,3 +32,12 @@ export {
   parseBookingOptionId,
   parseCreateBookingOptionInput,
 } from "./booking-option";
+
+/** Room-tag helpers for separate room tag schema. */
+export {
+  createRoomTagDocument,
+  parseCreateRoomTagInput,
+  parseRoomTagId,
+  normalizeRoomTagNames,
+  slugifyRoomTag,
+} from "./room-tag";

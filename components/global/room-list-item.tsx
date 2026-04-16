@@ -67,6 +67,8 @@ export function RoomListItemRow({ room, onEdit, onDelete }: RoomListItemRowProps
   const unitCount = room.unitCount ?? 1;
   const typeLabel = room.type.replace(/_/g, " ");
   const bedSize = room.bedSize ?? room.bedSummary;
+  const firstImageUrl =
+    room.roomImages && room.roomImages.length > 0 ? room.roomImages[0].url : room.imageUrls?.[0];
 
   return (
     <li
@@ -75,15 +77,25 @@ export function RoomListItemRow({ room, onEdit, onDelete }: RoomListItemRowProps
         "hover:bg-muted/25",
       )}
     >
-      <div className="min-w-0 flex-1 space-y-2.5">
-        <div>
-          <h2 className="text-base font-semibold tracking-tight text-foreground">{room.name}</h2>
-          {room.tagline ? (
-            <p className="mt-0.5 text-sm leading-snug text-muted-foreground">{room.tagline}</p>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+          {firstImageUrl ? (
+            <img
+              src={firstImageUrl}
+              alt={`${room.name} preview`}
+              className="h-28 w-full shrink-0 rounded-lg border border-border/60 object-cover sm:h-40 sm:w-64"
+              loading="lazy"
+            />
           ) : null}
-        </div>
+          <div className="min-w-0 flex-1 space-y-2.5">
+            <div>
+              <h2 className="text-base font-semibold tracking-tight text-foreground">{room.name}</h2>
+              {room.tagline ? (
+                <p className="mt-0.5 text-sm leading-snug text-muted-foreground">{room.tagline}</p>
+              ) : null}
+            </div>
 
-        <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-1.5">
           <span
             className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-background/80 px-2 py-0.5 text-xs capitalize text-foreground shadow-sm"
             title="Room type"
@@ -139,10 +151,10 @@ export function RoomListItemRow({ room, onEdit, onDelete }: RoomListItemRowProps
               <span className="truncate">{bedSize}</span>
             </span>
           ) : null}
-        </div>
+            </div>
 
-        {(room.priceWeekday != null || room.priceWeekend != null) && (
-          <div className="flex flex-wrap gap-2">
+            {(room.priceWeekday != null || room.priceWeekend != null) && (
+              <div className="flex flex-wrap gap-2">
             {room.priceWeekday != null && (
               <div className="rounded-lg border border-border/50 bg-muted/20 px-2.5 py-1.5">
                 <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
@@ -163,11 +175,24 @@ export function RoomListItemRow({ room, onEdit, onDelete }: RoomListItemRowProps
                 </p>
               </div>
             )}
-          </div>
-        )}
+              </div>
+            )}
 
-        {room.amenities?.length ? (
-          <div className="flex flex-wrap gap-1">
+            {room.tags?.length ? (
+              <div className="flex flex-wrap gap-1">
+            {room.tags.map((tag) => (
+              <span
+                key={tag._id}
+                className="inline-flex max-w-full items-center rounded-full border border-border/50 bg-primary/10 px-2 py-0.5 text-[11px] leading-tight text-foreground"
+              >
+                <span className="truncate">{tag.name}</span>
+              </span>
+            ))}
+              </div>
+            ) : null}
+
+            {room.amenities?.length ? (
+              <div className="flex flex-wrap gap-1">
             {room.amenities.map((a) => (
               <span
                 key={a}
@@ -176,8 +201,10 @@ export function RoomListItemRow({ room, onEdit, onDelete }: RoomListItemRowProps
                 <span className="truncate">{a}</span>
               </span>
             ))}
+              </div>
+            ) : null}
           </div>
-        ) : null}
+        </div>
       </div>
 
       <div className="flex shrink-0 items-center justify-end gap-2 sm:flex-col sm:items-end sm:pt-0.5">

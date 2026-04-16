@@ -17,6 +17,15 @@ export {
   type RoomListItem,
 } from "./rooms";
 export {
+  createRoomTag,
+  deleteRoomTag,
+  fetchRoomTags,
+  updateRoomTag,
+  type ListRoomTagsResponse,
+  type RoomTagItem,
+  type UpsertRoomTagPayload,
+} from "./room-tags";
+export {
   createBooking,
   fetchBookings,
   updateBooking,

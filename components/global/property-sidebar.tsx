@@ -7,6 +7,7 @@ import {
   HandCoinsIcon,
   LayoutDashboardIcon,
   PlugZapIcon,
+  TagsIcon,
   PanelLeftCloseIcon,
   PanelLeftIcon,
 } from "lucide-react";
@@ -51,6 +52,12 @@ function navItems(propertyId: string) {
       label: "Booking options",
       icon: HandCoinsIcon,
       match: (pathname: string) => pathname.startsWith(`/${propertyId}/booking-options`),
+    },
+    {
+      href: `/${propertyId}/room-tags`,
+      label: "Room tags",
+      icon: TagsIcon,
+      match: (pathname: string) => pathname.startsWith(`/${propertyId}/room-tags`),
     },
     {
       href: `/${propertyId}/integrations`,
@@ -137,12 +144,12 @@ export function PropertySidebar({ propertyId }: PropertySidebarProps) {
           </Button>
         ) : null}
       </div>
-      <div className={cn("flex min-h-0 flex-1 flex-col gap-1 overflow-auto py-3", collapsed ? "px-1.5" : "px-2")}>
-        <nav aria-label="Property" className="flex flex-col gap-px">
+      <div className={cn("flex min-h-0 flex-1 flex-col gap-1 overflow-auto py-4", collapsed ? "px-1.5" : "px-2")}>
+        <nav aria-label="Property" className="flex flex-col gap-1">
           {items.map(({ href, label, icon: Icon, match }) => {
             const active = match(pathname);
             const linkClass = cn(
-              "group relative flex items-center overflow-hidden rounded-md py-1.5",
+              "group relative flex items-center overflow-hidden rounded-md py-2",
               collapsed ? "justify-center px-0" : "gap-2.5 pr-2 pl-2",
               "text-[13px] font-medium leading-none tracking-[-0.01em]",
               "transition-[background-color,color,box-shadow] duration-200 ease-out",

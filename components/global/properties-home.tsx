@@ -11,7 +11,7 @@ import { PropertiesEmptyState } from "@/components/global/properties/properties-
 import { PropertyListRow } from "@/components/global/properties/property-list-row";
 import { Button } from "@/components/ui/button";
 import { useApiQuery } from "@/hooks";
-import { isNavigationReload, readLastPropertyId } from "@/utils/last-property-id";
+import { readLastPropertyId } from "@/utils/last-property-id";
 
 function PropertiesListSkeleton() {
   return (
@@ -38,7 +38,6 @@ export function PropertiesHome() {
   const count = propertiesQuery.data?.properties.length ?? 0;
 
   useEffect(() => {
-    if (!isNavigationReload()) return;
     const id = readLastPropertyId()?.trim();
     if (!id) return;
     router.replace(`/${id}/dashboard`);

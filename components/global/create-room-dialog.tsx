@@ -1,16 +1,21 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { BedDoubleIcon } from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
+import { ArrowDownIcon, ArrowUpIcon, BedDoubleIcon, ImageIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 
-import type { CreateRoomPayload, RoomListItem } from "@/api-clients";
-import { createRoom, updateRoom } from "@/api-clients/rooms";
-import { RoomAmenityChecklist } from "@/components/global/room-amenity-checklist";
+import type { CreateRoomPayload, ListRoomTagsResponse, RoomListItem } from "@/api-clients";
+import { createRoom, createRoomImageUploadUrl, updateRoom } from "@/api-clients/rooms";
 import { RoomNumberFields } from "@/components/global/room-number-fields";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { splitAmenitiesForEditForm } from "@/constants/room-amenity-presets";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useApiQuery } from "@/hooks";
 import { cn } from "@/lib/utils";
 import { ROOM_STATUSES, ROOM_TYPES } from "@/types/room";
 
@@ -22,13 +27,25 @@ const EMPTY_FORM: CreateRoomPayload = {
   bedCount: 1,
   unitCount: 1,
   roomNumbers: [""],
+  imageUrls: [""],
+  tagNames: [],
   amenities: [],
+};
+
+type RoomImageDraft = {
+  url: string;
+  tagIds?: string[];
+  sortOrder: number;
 };
 
 function padRoomNumbers(unitCount: number, existing?: string[]): string[] {
   const n = Math.max(1, unitCount);
   const base = Array.isArray(existing) ? existing : [];
   return Array.from({ length: n }, (_, i) => base[i] ?? "");
+}
+
+function normalizeRoomImages(images: RoomImageDraft[]): RoomImageDraft[] {
+  return images.map((img, idx) => ({ ...img, sortOrder: idx }));
 }
 
 const borderless =
@@ -64,9 +81,31 @@ export function CreateRoomDialog({
   const queryClient = useQueryClient();
   const isEdit = Boolean(room);
   const [form, setForm] = useState<CreateRoomPayload>(EMPTY_FORM);
-  const [selectedPresetAmenities, setSelectedPresetAmenities] = useState<string[]>([]);
-  const [extraAmenitiesText, setExtraAmenitiesText] = useState("");
+  const [roomImages, setRoomImages] = useState<RoomImageDraft[]>([{ url: "", sortOrder: 0 }]);
+  const [tagNamesText, setTagNamesText] = useState("");
   const [roomNumberError, setRoomNumberError] = useState<string | null>(null);
+  const [imageUploadError, setImageUploadError] = useState<string | null>(null);
+  const [uploadingImageIndex, setUploadingImageIndex] = useState<number | null>(null);
+  const [draggingImageIndex, setDraggingImageIndex] = useState<number | null>(null);
+  const imageStripRef = useRef<HTMLDivElement | null>(null);
+  const imageStripDragState = useRef<{
+    active: boolean;
+    pointerId: number | null;
+    startX: number;
+    startScrollLeft: number;
+  }>({
+    active: false,
+    pointerId: null,
+    startX: 0,
+    startScrollLeft: 0,
+  });
+
+  const roomTagsQuery = useApiQuery<ListRoomTagsResponse>(
+    ["room-tags", propertyId],
+    `/api/properties/${propertyId}/room-tags`,
+    undefined,
+    { enabled: Boolean(propertyId && open) },
+  );
 
   useEffect(() => {
     if (!open) {
@@ -88,17 +127,33 @@ export function CreateRoomDialog({
         bedSize: room.bedSize ?? room.bedSummary,
         priceWeekday: room.priceWeekday,
         priceWeekend: room.priceWeekend,
+        imageUrls: room.imageUrls && room.imageUrls.length > 0 ? room.imageUrls : [],
+        roomImages:
+          room.roomImages && room.roomImages.length > 0
+            ? room.roomImages.map((img, idx) => ({
+                url: img.url,
+                tagIds: img.tagIds,
+                sortOrder: idx,
+              }))
+            : (room.imageUrls ?? []).map((url, idx) => ({ url, sortOrder: idx })),
+        tagNames: room.tags?.map((tag) => tag.name) ?? [],
         isActive: room.isActive,
         sortOrder: room.sortOrder,
-        amenities: [],
+        amenities: room.amenities ?? [],
       });
-      const { selectedPresets, extraText } = splitAmenitiesForEditForm(room.amenities ?? []);
-      setSelectedPresetAmenities(selectedPresets);
-      setExtraAmenitiesText(extraText);
+      const initialRoomImages = room.roomImages?.length
+        ? room.roomImages.map((img, idx) => ({
+            url: img.url,
+            tagIds: img.tagIds,
+            sortOrder: idx,
+          }))
+        : (room.imageUrls ?? []).map((url, idx) => ({ url, sortOrder: idx }));
+      setRoomImages(initialRoomImages.length > 0 ? initialRoomImages : [{ url: "", sortOrder: 0 }]);
+      setTagNamesText((room.tags ?? []).map((tag) => tag.name).join(", "));
     } else {
       setForm(EMPTY_FORM);
-      setSelectedPresetAmenities([]);
-      setExtraAmenitiesText("");
+      setRoomImages([{ url: "", sortOrder: 0 }]);
+      setTagNamesText("");
     }
     setRoomNumberError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- room identity via _id + updatedAt
@@ -108,8 +163,11 @@ export function CreateRoomDialog({
     onOpenChange(next);
     if (!next) {
       setForm(EMPTY_FORM);
-      setSelectedPresetAmenities([]);
-      setExtraAmenitiesText("");
+      setRoomImages([{ url: "", sortOrder: 0 }]);
+      setTagNamesText("");
+      setImageUploadError(null);
+      setUploadingImageIndex(null);
+      setDraggingImageIndex(null);
     }
     setRoomNumberError(null);
   }
@@ -125,14 +183,52 @@ export function CreateRoomDialog({
     },
   });
 
+  async function uploadImageFile(file: File, index: number) {
+    setImageUploadError(null);
+    setUploadingImageIndex(index);
+    try {
+      const signed = await createRoomImageUploadUrl(propertyId, {
+        fileName: file.name,
+        contentType: file.type,
+        size: file.size,
+      });
+
+      const putRes = await fetch(signed.uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      if (!putRes.ok) {
+        throw new Error(`Upload failed (${putRes.status}).`);
+      }
+
+      setRoomImages((prev) =>
+        normalizeRoomImages(prev.map((img, i) => (i === index ? { ...img, url: signed.fileUrl } : img))),
+      );
+    } catch (error) {
+      setImageUploadError(error instanceof Error ? error.message : "Failed to upload image.");
+    } finally {
+      setUploadingImageIndex(null);
+    }
+  }
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setRoomNumberError(null);
-    const extra = extraAmenitiesText
+    const parsedTagNames = tagNamesText
       .split(/[,;\n]/)
       .map((s) => s.trim())
       .filter(Boolean);
-    const amenities = [...new Set([...selectedPresetAmenities, ...extra])];
+    const normalizedImages = normalizeRoomImages(
+      roomImages
+        .map((img) => ({ ...img, url: img.url.trim() }))
+        .filter((img) => Boolean(img.url))
+        .map((img) => ({
+          ...img,
+          tagIds: img.tagIds?.length ? [...new Set(img.tagIds)] : undefined,
+        })),
+    );
+    const imageUrls = normalizedImages.map((img) => img.url);
     const nums = (form.roomNumbers ?? []).map((s) => s.trim());
     const allEmpty = nums.every((s) => !s);
     if (!allEmpty && nums.some((s) => !s)) {
@@ -141,17 +237,10 @@ export function CreateRoomDialog({
     }
     saveMutation.mutate({
       ...form,
-      amenities,
+      tagNames: [...new Set(parsedTagNames)],
+      roomImages: normalizedImages,
+      imageUrls,
       roomNumbers: allEmpty ? [] : nums,
-    });
-  }
-
-  function handlePresetToggle(label: string, checked: boolean) {
-    setSelectedPresetAmenities((prev) => {
-      if (checked) {
-        return prev.includes(label) ? prev : [...prev, label];
-      }
-      return prev.filter((item) => item !== label);
     });
   }
 
@@ -326,7 +415,7 @@ export function CreateRoomDialog({
                   }}
                   className={cn(pillInput, "w-12 text-center tabular-nums")}
                   required
-                  title="How many physical rooms share this name, rates, and amenities (e.g. 2 identical Deluxe rooms)"
+                  title="How many physical rooms share this name, rates, tags, and setup (e.g. 2 identical Deluxe rooms)"
                 />
               </div>
 
@@ -391,6 +480,25 @@ export function CreateRoomDialog({
               <hr className="border-border/50" />
 
               <div className="space-y-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Tags</p>
+                <input
+                  id="room-tags"
+                  name="tagNames"
+                  value={tagNamesText}
+                  onChange={(event) => setTagNamesText(event.target.value)}
+                  placeholder="e.g. Sea view, Balcony, Family friendly"
+                  className={cn(
+                    borderless,
+                    "w-full border-b border-border/70 pb-1.5 text-sm",
+                    "placeholder:text-muted-foreground/50 focus-visible:border-primary",
+                  )}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Use comma-separated tags. Tags are stored in a separate schema and linked to this room.
+                </p>
+              </div>
+
+              <div className="space-y-3">
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Standard rates
                 </p>
@@ -448,19 +556,271 @@ export function CreateRoomDialog({
               </div>
 
               <div className="rounded-xl border border-border/60 bg-muted/25 p-4 sm:p-5">
-                <div className="mb-3">
-                  <h3 className="text-sm font-medium text-foreground">Amenities</h3>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    Tick what applies, then list anything extra.
-                  </p>
+                <div className="mb-3 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-medium text-foreground">Room images</h3>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Upload from your device (presigned S3) or paste an image URL.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setRoomImages((prev) => normalizeRoomImages([...prev, { url: "", sortOrder: prev.length }]))
+                    }
+                  >
+                    <PlusIcon className="size-4" />
+                    Add image
+                  </Button>
                 </div>
-                <RoomAmenityChecklist
-                  embedded
-                  selected={selectedPresetAmenities}
-                  onToggle={handlePresetToggle}
-                  extraText={extraAmenitiesText}
-                  onExtraTextChange={setExtraAmenitiesText}
-                />
+                <div
+                  ref={imageStripRef}
+                  className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1"
+                  onPointerDown={(event) => {
+                    const target = event.target as HTMLElement;
+                    if (
+                      target.closest(
+                        "input,textarea,select,button,[role='menuitemcheckbox'],[contenteditable='true']",
+                      )
+                    ) {
+                      return;
+                    }
+                    const el = imageStripRef.current;
+                    if (!el) return;
+                    imageStripDragState.current = {
+                      active: true,
+                      pointerId: event.pointerId,
+                      startX: event.clientX,
+                      startScrollLeft: el.scrollLeft,
+                    };
+                    el.setPointerCapture(event.pointerId);
+                  }}
+                  onPointerMove={(event) => {
+                    const state = imageStripDragState.current;
+                    const el = imageStripRef.current;
+                    if (!state.active || !el || state.pointerId !== event.pointerId) return;
+                    const dx = event.clientX - state.startX;
+                    el.scrollLeft = state.startScrollLeft - dx;
+                  }}
+                  onPointerUp={(event) => {
+                    const state = imageStripDragState.current;
+                    const el = imageStripRef.current;
+                    if (state.pointerId !== event.pointerId) return;
+                    imageStripDragState.current.active = false;
+                    imageStripDragState.current.pointerId = null;
+                    if (el?.hasPointerCapture(event.pointerId)) {
+                      el.releasePointerCapture(event.pointerId);
+                    }
+                  }}
+                  onPointerCancel={(event) => {
+                    const state = imageStripDragState.current;
+                    const el = imageStripRef.current;
+                    if (state.pointerId !== event.pointerId) return;
+                    imageStripDragState.current.active = false;
+                    imageStripDragState.current.pointerId = null;
+                    if (el?.hasPointerCapture(event.pointerId)) {
+                      el.releasePointerCapture(event.pointerId);
+                    }
+                  }}
+                >
+                  {roomImages.map((image, idx) => (
+                    <div
+                      key={`room-image-${idx}`}
+                      draggable
+                      onDragStart={(event) => {
+                        event.dataTransfer.setData("text/plain", String(idx));
+                        event.dataTransfer.effectAllowed = "move";
+                        setDraggingImageIndex(idx);
+                      }}
+                      onDragEnd={() => setDraggingImageIndex(null)}
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        event.dataTransfer.dropEffect = "move";
+                      }}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        const sourceIdxRaw = event.dataTransfer.getData("text/plain");
+                        const sourceIdx = Number.parseInt(sourceIdxRaw, 10);
+                        if (!Number.isFinite(sourceIdx) || sourceIdx === idx) return;
+                        setRoomImages((prev) => {
+                          const next = [...prev];
+                          const [moved] = next.splice(sourceIdx, 1);
+                          next.splice(idx, 0, moved);
+                          return normalizeRoomImages(next);
+                        });
+                        setDraggingImageIndex(null);
+                      }}
+                      className={cn(
+                        "w-[min(100%,320px)] min-w-[280px] rounded-lg border border-border/60 bg-background/70 p-3",
+                        draggingImageIndex === idx && "opacity-60",
+                      )}
+                    >
+                      <div className="mb-2 flex items-center justify-between">
+                        <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+                          <ImageIcon className="size-4 shrink-0" />
+                          Image {idx + 1}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">Drag to reorder</div>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="overflow-hidden rounded-md border border-border/60 bg-muted/20">
+                          {image.url ? (
+                            <img
+                              src={image.url}
+                              alt={`Room image ${idx + 1}`}
+                              className="h-40 w-full object-cover"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="flex h-40 items-center justify-center text-xs text-muted-foreground">
+                              No image selected
+                            </div>
+                          )}
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            render={
+                              <Button type="button" variant="outline" size="sm" className="w-full justify-between" />
+                            }
+                          >
+                            <span className="truncate">
+                              {(image.tagIds?.length ?? 0) > 0
+                                ? `${image.tagIds!.length} tag${image.tagIds!.length === 1 ? "" : "s"} selected`
+                                : "Select tags"}
+                            </span>
+                            <span className="text-xs text-muted-foreground">Multi-select</span>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start" className="w-64">
+                            {(roomTagsQuery.data?.tags ?? []).map((tag) => {
+                              const checked = (image.tagIds ?? []).includes(tag._id);
+                              return (
+                                <DropdownMenuCheckboxItem
+                                  key={tag._id}
+                                  checked={checked}
+                                  onCheckedChange={(nextChecked) => {
+                                    setRoomImages((prev) =>
+                                      normalizeRoomImages(
+                                        prev.map((img, i) => {
+                                          if (i !== idx) return img;
+                                          const current = img.tagIds ?? [];
+                                          const next = nextChecked
+                                            ? [...new Set([...current, tag._id])]
+                                            : current.filter((id) => id !== tag._id);
+                                          return { ...img, tagIds: next.length ? next : undefined };
+                                        }),
+                                      ),
+                                    );
+                                  }}
+                                >
+                                  {tag.name}
+                                </DropdownMenuCheckboxItem>
+                              );
+                            })}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        className="hidden"
+                        id={`room-image-file-${idx}`}
+                        onChange={async (event) => {
+                          const file = event.target.files?.[0];
+                          if (!file) return;
+                          await uploadImageFile(file, idx);
+                          event.currentTarget.value = "";
+                        }}
+                        disabled={uploadingImageIndex !== null}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-2"
+                        onClick={() => {
+                          const el = document.getElementById(`room-image-file-${idx}`) as HTMLInputElement | null;
+                          el?.click();
+                        }}
+                        disabled={uploadingImageIndex !== null}
+                      >
+                        {uploadingImageIndex === idx ? "Uploading..." : "Upload"}
+                      </Button>
+                      <input
+                        type="url"
+                        value={image.url}
+                        onChange={(event) =>
+                          setRoomImages((prev) =>
+                            normalizeRoomImages(
+                              prev.map((img, i) => (i === idx ? { ...img, url: event.target.value } : img)),
+                            ),
+                          )
+                        }
+                        placeholder="or paste image URL"
+                        className={cn(
+                          borderless,
+                          "mt-2 w-full border-b border-border/70 pb-1.5 text-xs",
+                          "placeholder:text-muted-foreground/50 focus-visible:border-primary",
+                        )}
+                      />
+                      <div className="mt-2 flex items-center gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label="Move image up"
+                          disabled={idx === 0}
+                          onClick={() =>
+                            setRoomImages((prev) => {
+                              if (idx === 0) return prev;
+                              const next = [...prev];
+                              [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+                              return normalizeRoomImages(next);
+                            })
+                          }
+                        >
+                          <ArrowUpIcon className="size-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label="Move image down"
+                          disabled={idx === roomImages.length - 1}
+                          onClick={() =>
+                            setRoomImages((prev) => {
+                              if (idx === prev.length - 1) return prev;
+                              const next = [...prev];
+                              [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+                              return normalizeRoomImages(next);
+                            })
+                          }
+                        >
+                          <ArrowDownIcon className="size-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label="Remove image URL"
+                          onClick={() =>
+                            setRoomImages((prev) =>
+                              normalizeRoomImages(
+                                prev.length <= 1 ? [{ url: "", sortOrder: 0 }] : prev.filter((_, i) => i !== idx),
+                              ),
+                            )
+                          }
+                        >
+                          <Trash2Icon className="size-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {imageUploadError ? (
+                  <p className="mt-2 text-xs text-destructive">{imageUploadError}</p>
+                ) : null}
               </div>
 
               {saveMutation.error ? (

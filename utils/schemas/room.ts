@@ -121,6 +121,87 @@ function ensureAmenities(value: unknown): string[] {
   return [];
 }
 
+function ensureImageUrls(value: unknown): string[] {
+  if (value === undefined || value === null) {
+    return [];
+  }
+  if (!Array.isArray(value)) {
+    throw new Error("imageUrls must be an array of strings.");
+  }
+  return [...new Set(value)]
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function ensureTagNames(value: unknown): string[] {
+  if (value === undefined || value === null) {
+    return [];
+  }
+  const list = Array.isArray(value)
+    ? value
+    : typeof value === "string"
+      ? value.split(/[,;\n]/)
+      : [];
+  return [...new Set(list)]
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function ensureOptionalTagId(value: unknown, label: string): ObjectId | undefined {
+  if (value === undefined || value === null || value === "") {
+    return undefined;
+  }
+  if (typeof value !== "string" || !ObjectId.isValid(value)) {
+    throw new Error(`${label} must be a valid id.`);
+  }
+  return new ObjectId(value);
+}
+
+function ensureOptionalTagIds(value: unknown, label: string): ObjectId[] | undefined {
+  if (value === undefined || value === null || value === "") {
+    return undefined;
+  }
+  if (!Array.isArray(value)) {
+    throw new Error(`${label} must be an array of ids.`);
+  }
+  const ids = value
+    .map((item, idx) => ensureOptionalTagId(item, `${label}[${idx}]`))
+    .filter((id): id is ObjectId => Boolean(id));
+  return ids.length > 0 ? ids : undefined;
+}
+
+function ensureRoomImages(value: unknown): NonNullable<CreateRoomInput["roomImages"]> {
+  if (value === undefined || value === null) {
+    return [];
+  }
+  if (!Array.isArray(value)) {
+    throw new Error("roomImages must be an array.");
+  }
+  return value
+    .map((item, idx) => {
+      if (!item || typeof item !== "object") {
+        throw new Error(`roomImages[${idx}] must be an object.`);
+      }
+      const row = item as Record<string, unknown>;
+      const url = ensureString(row.url, `roomImages[${idx}].url`);
+      const sortOrderRaw = row.sortOrder;
+      const sortOrder =
+        sortOrderRaw === undefined || sortOrderRaw === null || sortOrderRaw === ""
+          ? idx
+          : ensureSortOrder(sortOrderRaw);
+      const legacyTagId = ensureOptionalTagId(row.tagId, `roomImages[${idx}].tagId`);
+      const tagIds = ensureOptionalTagIds(row.tagIds, `roomImages[${idx}].tagIds`) ?? (legacyTagId ? [legacyTagId] : undefined);
+      return {
+        url,
+        tagIds,
+        sortOrder,
+      };
+    })
+    .filter((img) => Boolean(img.url));
+}
+
 function slugify(name: string): string {
   return name
     .toLowerCase()
@@ -161,6 +242,15 @@ export function parseCreateRoomInput(payload: unknown): CreateRoomInput {
   const legacyBed = ensureOptionalString(input.bedSummary);
 
   const unitCount = ensurePositiveInt(input.unitCount, "unitCount", 1);
+  const imageUrls = ensureImageUrls(input.imageUrls);
+  const roomImages = ensureRoomImages(input.roomImages);
+  const normalizedRoomImages =
+    roomImages.length > 0
+      ? roomImages
+      : imageUrls.map((url, idx) => ({
+          url,
+          sortOrder: idx,
+        }));
 
   return {
     name,
@@ -180,6 +270,9 @@ export function parseCreateRoomInput(payload: unknown): CreateRoomInput {
     priceWeekday: ensureOptionalPrice(input.priceWeekday, "priceWeekday"),
     priceWeekend: ensureOptionalPrice(input.priceWeekend, "priceWeekend"),
     amenities: ensureAmenities(input.amenities),
+    imageUrls: imageUrls,
+    roomImages: normalizedRoomImages,
+    tagNames: ensureTagNames(input.tagNames),
     isActive: typeof input.isActive === "boolean" ? input.isActive : true,
     sortOrder: ensureSortOrder(input.sortOrder),
   };
@@ -190,9 +283,11 @@ export function createRoomDocument(
   orgId: string,
   propertyId: ObjectId,
 ): Omit<Room, "_id"> {
+  const { tagNames: _tagNames, ...roomInput } = input;
+  void _tagNames;
   const now = new Date();
   return {
-    ...input,
+    ...roomInput,
     orgId,
     propertyId,
     createdAt: now,

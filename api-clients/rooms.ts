@@ -23,6 +23,14 @@ export type RoomListItem = {
   bedSummary?: string;
   priceWeekday?: number;
   priceWeekend?: number;
+  imageUrls?: string[];
+  roomImages?: Array<{
+    url: string;
+    sortOrder: number;
+    tagIds?: string[];
+    tags?: Array<{ _id: string; name: string; slug: string }>;
+  }>;
+  tags?: Array<{ _id: string; name: string; slug: string }>;
   amenities: string[];
   isActive: boolean;
   sortOrder: number;
@@ -61,6 +69,9 @@ export type CreateRoomPayload = {
   bedSummary?: string;
   priceWeekday?: number;
   priceWeekend?: number;
+  imageUrls?: string[];
+  roomImages?: Array<{ url: string; tagIds?: string[]; sortOrder: number }>;
+  tagNames?: string[];
   amenities?: string[];
   isActive?: boolean;
   sortOrder?: number;
@@ -93,6 +104,19 @@ export function updateRoomDailyPrice(
     method: "PATCH",
     json: payload,
   });
+}
+
+export function createRoomImageUploadUrl(
+  propertyId: string,
+  payload: { fileName: string; contentType: string; size: number },
+) {
+  return apiFetch<{ uploadUrl: string; fileUrl: string; key: string }>(
+    `/api/properties/${propertyId}/rooms/image-upload-url`,
+    {
+      method: "POST",
+      json: payload,
+    },
+  );
 }
 
 export function deleteRoom(propertyId: string, roomId: string) {

@@ -8,6 +8,7 @@ import type { Room } from "@/types/room";
 import { getActiveOrganizationId } from "@/utils/auth-org";
 import { isValidDateKey } from "@/utils/date-key";
 import { getDb } from "@/utils/mongodb";
+import { loadRoomTagsByIds } from "@/utils/room-tags-db";
 import { parsePropertyId, parseRoomId } from "@/utils/schemas/room";
 import { serializeRoomForApi } from "@/utils/serialize-room-api";
 
@@ -132,5 +133,10 @@ export async function PATCH(req: Request, context: RouteContext) {
     return NextResponse.json({ error: "Room not found." }, { status: 404 });
   }
 
-  return NextResponse.json({ room: serializeRoomForApi(updated) });
+  const updatedTagIds = [
+    ...(updated.tagIds ?? []),
+    ...((updated.roomImages ?? []).flatMap((img) => img.tagIds ?? [])),
+  ];
+  const tagsById = await loadRoomTagsByIds(db, orgId, propertyObjectId, updatedTagIds);
+  return NextResponse.json({ room: serializeRoomForApi(updated, tagsById) });
 }

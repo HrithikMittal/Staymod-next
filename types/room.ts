@@ -22,6 +22,14 @@ export const ROOM_STATUSES = ["active", "inactive", "maintenance", "out_of_order
 
 export type RoomStatus = (typeof ROOM_STATUSES)[number];
 
+export type RoomImage = {
+  url: string;
+  /** Optional linked room tag ids. */
+  tagIds?: ObjectId[];
+  /** Stable display order; lower renders first. */
+  sortOrder: number;
+};
+
 /**
  * Bookable unit under a property. Includes **`orgId`** (via {@link OrganizationScope}) so
  * MongoDB queries can scope by organization without joining through `properties` every time.
@@ -75,6 +83,12 @@ export type Room = OrganizationScope & {
   dailyPriceOverrides?: Record<string, number>;
   /** Feature tags, e.g. Wi‑Fi, balcony. */
   amenities: string[];
+  /** Optional room gallery image URLs. */
+  imageUrls?: string[];
+  /** Rich room image metadata with per-image tag + ordering. */
+  roomImages?: RoomImage[];
+  /** Linked tags from `room_tags` collection. */
+  tagIds?: ObjectId[];
   isActive: boolean;
   /** Lower sorts first when listing rooms. */
   sortOrder: number;
@@ -85,4 +99,7 @@ export type Room = OrganizationScope & {
 export type CreateRoomInput = Omit<
   Room,
   "_id" | "orgId" | "propertyId" | "createdAt" | "updatedAt"
->;
+> & {
+  /** Normalized tag labels from form payload; resolved to `tagIds` in route handlers. */
+  tagNames?: string[];
+};
