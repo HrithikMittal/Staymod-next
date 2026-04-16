@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useApiQuery } from "@/hooks";
 import { cn } from "@/lib/utils";
+import { clearLastPropertyId } from "@/utils/last-property-id";
 
 /** First path segment when it looks like a Mongo ObjectId (property routes). */
 export function getPropertyIdFromPathname(pathname: string): string | null {
@@ -116,6 +117,7 @@ export function PropertyHeaderSwitcher({
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={() => {
+            clearLastPropertyId();
             router.push("/");
           }}
         >
