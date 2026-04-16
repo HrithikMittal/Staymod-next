@@ -1,6 +1,6 @@
 "use client";
 
-import { useClerk, useSignIn } from "@clerk/nextjs";
+import { useAuth, useClerk, useSignIn } from "@clerk/nextjs";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
@@ -13,9 +13,14 @@ import { OtpInput } from "./otp-input";
 
 type SignInStep = "details" | "otp";
 
+function isAlreadySignedInClerkError(message: string): boolean {
+  return /already signed in/i.test(message);
+}
+
 export function CustomSignInForm() {
-  const { setActive } = useClerk();
+  const { setActive, signOut } = useClerk();
   const { fetchStatus, signIn } = useSignIn();
+  const { isLoaded: authLoaded, userId } = useAuth();
   const router = useRouter();
   const isReady = fetchStatus === "idle" && Boolean(signIn);
 
@@ -36,6 +41,27 @@ export function CustomSignInForm() {
     return () => window.clearTimeout(timer);
   }, [resendCooldown]);
 
+  /** When the session loads after hydration, leave the sign-in page. */
+  useEffect(() => {
+    if (!authLoaded || !userId) return;
+    router.replace("/");
+  }, [authLoaded, userId, router]);
+
+  /**
+   * Clerk sometimes reports "already signed in" while the browser client has no session
+   * (stale cookies / prod cache). Signing out forces a full session reset.
+   */
+  async function recoverStaleSessionAfterAlreadySignedInError() {
+    setIsSubmitting(true);
+    try {
+      await signOut({ redirectUrl: "/sign-in" });
+    } catch {
+      window.location.assign("/sign-in");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   async function handleSendOtp(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!isReady || !signIn) return;
@@ -45,12 +71,20 @@ export function CustomSignInForm() {
     try {
       const startAttempt = await signIn.create({ identifier: emailAddress });
       if (startAttempt.error) {
+        if (isAlreadySignedInClerkError(startAttempt.error.message)) {
+          await recoverStaleSessionAfterAlreadySignedInError();
+          return;
+        }
         setError(startAttempt.error.message);
         return;
       }
 
       const sendOtpAttempt = await signIn.emailCode.sendCode();
       if (sendOtpAttempt.error) {
+        if (isAlreadySignedInClerkError(sendOtpAttempt.error.message)) {
+          await recoverStaleSessionAfterAlreadySignedInError();
+          return;
+        }
         setError(sendOtpAttempt.error.message);
         return;
       }
@@ -74,6 +108,10 @@ export function CustomSignInForm() {
     try {
       const resendAttempt = await signIn.emailCode.sendCode();
       if (resendAttempt.error) {
+        if (isAlreadySignedInClerkError(resendAttempt.error.message)) {
+          await recoverStaleSessionAfterAlreadySignedInError();
+          return;
+        }
         setError(resendAttempt.error.message);
         return;
       }
@@ -95,6 +133,10 @@ export function CustomSignInForm() {
     try {
       const verifyAttempt = await signIn.emailCode.verifyCode({ code: otp });
       if (verifyAttempt.error) {
+        if (isAlreadySignedInClerkError(verifyAttempt.error.message)) {
+          await recoverStaleSessionAfterAlreadySignedInError();
+          return;
+        }
         setError(verifyAttempt.error.message);
         return;
       }
