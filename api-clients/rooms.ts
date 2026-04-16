@@ -16,6 +16,8 @@ export type RoomListItem = {
   bedCount: number;
   /** Identical rooms of this type (e.g. 2 Deluxe rooms). */
   unitCount: number;
+  /** Reference label per physical unit (e.g. room numbers), same length as `unitCount` when set. */
+  roomNumbers?: string[];
   bedSize?: string;
   /** @deprecated Prefer `bedSize` */
   bedSummary?: string;
@@ -53,6 +55,7 @@ export type CreateRoomPayload = {
   maxGuests?: number;
   bedCount?: number;
   unitCount?: number;
+  roomNumbers?: string[];
   bedSize?: string;
   /** Legacy; server maps to `bedSize` if `bedSize` is omitted */
   bedSummary?: string;

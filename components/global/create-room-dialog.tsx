@@ -7,6 +7,7 @@ import { FormEvent, useEffect, useState } from "react";
 import type { CreateRoomPayload, RoomListItem } from "@/api-clients";
 import { createRoom, updateRoom } from "@/api-clients/rooms";
 import { RoomAmenityChecklist } from "@/components/global/room-amenity-checklist";
+import { RoomNumberFields } from "@/components/global/room-number-fields";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { splitAmenitiesForEditForm } from "@/constants/room-amenity-presets";
@@ -20,8 +21,15 @@ const EMPTY_FORM: CreateRoomPayload = {
   maxGuests: 2,
   bedCount: 1,
   unitCount: 1,
+  roomNumbers: [""],
   amenities: [],
 };
+
+function padRoomNumbers(unitCount: number, existing?: string[]): string[] {
+  const n = Math.max(1, unitCount);
+  const base = Array.isArray(existing) ? existing : [];
+  return Array.from({ length: n }, (_, i) => base[i] ?? "");
+}
 
 const borderless =
   "border-0 bg-transparent shadow-none outline-none ring-0 focus-visible:ring-0 focus-visible:border-0";
@@ -58,12 +66,14 @@ export function CreateRoomDialog({
   const [form, setForm] = useState<CreateRoomPayload>(EMPTY_FORM);
   const [selectedPresetAmenities, setSelectedPresetAmenities] = useState<string[]>([]);
   const [extraAmenitiesText, setExtraAmenitiesText] = useState("");
+  const [roomNumberError, setRoomNumberError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) {
       return;
     }
     if (room) {
+      const unitCount = room.unitCount ?? 1;
       setForm({
         name: room.name,
         type: room.type as CreateRoomPayload["type"],
@@ -73,7 +83,8 @@ export function CreateRoomDialog({
         floor: room.floor,
         maxGuests: room.maxGuests,
         bedCount: room.bedCount ?? 1,
-        unitCount: room.unitCount ?? 1,
+        unitCount,
+        roomNumbers: padRoomNumbers(unitCount, room.roomNumbers),
         bedSize: room.bedSize ?? room.bedSummary,
         priceWeekday: room.priceWeekday,
         priceWeekend: room.priceWeekend,
@@ -89,6 +100,7 @@ export function CreateRoomDialog({
       setSelectedPresetAmenities([]);
       setExtraAmenitiesText("");
     }
+    setRoomNumberError(null);
   }, [open, room?._id, room?.updatedAt]);
 
   function handleOpenChange(next: boolean) {
@@ -98,6 +110,7 @@ export function CreateRoomDialog({
       setSelectedPresetAmenities([]);
       setExtraAmenitiesText("");
     }
+    setRoomNumberError(null);
   }
 
   const saveMutation = useMutation({
@@ -113,14 +126,22 @@ export function CreateRoomDialog({
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setRoomNumberError(null);
     const extra = extraAmenitiesText
       .split(/[,;\n]/)
       .map((s) => s.trim())
       .filter(Boolean);
     const amenities = [...new Set([...selectedPresetAmenities, ...extra])];
+    const nums = (form.roomNumbers ?? []).map((s) => s.trim());
+    const allEmpty = nums.every((s) => !s);
+    if (!allEmpty && nums.some((s) => !s)) {
+      setRoomNumberError("Enter a room number for each unit, or clear all room number fields.");
+      return;
+    }
     saveMutation.mutate({
       ...form,
       amenities,
+      roomNumbers: allEmpty ? [] : nums,
     });
   }
 
@@ -148,15 +169,15 @@ export function CreateRoomDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         className={cn(
-          "flex max-h-[min(90vh,880px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl",
+          "flex h-[min(90vh,880px)] max-h-[min(90vh,880px)] min-h-0 flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl",
           "rounded-2xl ring-1 ring-foreground/8",
         )}
         showCloseButton
       >
         <DialogTitle className="sr-only">{dialogTitle}</DialogTitle>
 
-        <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit}>
-          <div className="shrink-0 space-y-4 px-8 pt-11 pb-2 pr-14">
+        <form className="flex min-h-0 flex-1 flex-col overflow-hidden" onSubmit={handleSubmit}>
+          <div className="shrink-0 space-y-4 border-b border-border/60 bg-background px-8 pt-11 pb-4 pr-14">
             <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
               {breadcrumb}
             </p>
@@ -198,8 +219,11 @@ export function CreateRoomDialog({
                 />
               </div>
             </div>
+          </div>
 
-            <div className="flex flex-wrap gap-2">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-8 pb-4 pr-14">
+            <div className="space-y-6 py-4">
+              <div className="flex flex-wrap gap-2">
               <div className={pill}>
                 <span className="text-xs text-muted-foreground">Type</span>
                 <select
@@ -291,12 +315,14 @@ export function CreateRoomDialog({
                   type="number"
                   min={1}
                   value={form.unitCount ?? 1}
-                  onChange={(event) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      unitCount: Number.parseInt(event.target.value, 10) || 1,
-                    }))
-                  }
+                  onChange={(event) => {
+                    const nextCount = Math.max(1, Number.parseInt(event.target.value, 10) || 1);
+                    setForm((prev) => {
+                      const prevNums = prev.roomNumbers ?? [];
+                      const nextNums = Array.from({ length: nextCount }, (_, i) => prevNums[i] ?? "");
+                      return { ...prev, unitCount: nextCount, roomNumbers: nextNums };
+                    });
+                  }}
                   className={cn(pillInput, "w-12 text-center tabular-nums")}
                   required
                   title="How many physical rooms share this name, rates, and amenities (e.g. 2 identical Deluxe rooms)"
@@ -330,11 +356,21 @@ export function CreateRoomDialog({
                   className={pillInput}
                 />
               </div>
-            </div>
-          </div>
+              </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-8 pb-2">
-            <div className="space-y-6 py-4">
+              <RoomNumberFields
+                unitCount={form.unitCount ?? 1}
+                values={form.roomNumbers ?? []}
+                onChange={(next) =>
+                  setForm((prev) => ({ ...prev, roomNumbers: next }))
+                }
+              />
+              {roomNumberError ? (
+                <p className="text-sm text-destructive" role="alert">
+                  {roomNumberError}
+                </p>
+              ) : null}
+
               <hr className="border-border/50" />
 
               <div className="space-y-2">

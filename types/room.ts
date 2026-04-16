@@ -55,6 +55,11 @@ export type Room = OrganizationScope & {
    * e.g. `2` when you operate two identical “Deluxe” rooms as one listing row.
    */
   unitCount: number;
+  /**
+   * Reference labels for each physical unit (same order as `unitCount`), e.g. `["101","102","103"]`.
+   * Omit or use an empty array when not tracked.
+   */
+  roomNumbers?: string[];
   /** Bed configuration label, e.g. "King", "2 × Twin", "Twin bunks". */
   bedSize?: string;
   /** @deprecated Prefer `bedSize`; kept for older documents. */

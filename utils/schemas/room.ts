@@ -72,6 +72,36 @@ function ensureOptionalPrice(value: unknown, label: string): number | undefined 
   return n;
 }
 
+/**
+ * Optional per-unit labels; when non-empty, length must match `unitCount` and every entry non-empty.
+ */
+function ensureRoomNumbers(value: unknown, unitCount: number): string[] {
+  if (value === undefined || value === null) {
+    return [];
+  }
+  if (!Array.isArray(value)) {
+    throw new Error("roomNumbers must be an array of strings.");
+  }
+  const numbers = value.map((item, index) => {
+    if (typeof item !== "string") {
+      throw new Error(`roomNumbers[${index}] must be a string.`);
+    }
+    return item.trim();
+  });
+  if (numbers.length === 0) {
+    return [];
+  }
+  if (numbers.length !== unitCount) {
+    throw new Error(`roomNumbers must have exactly ${unitCount} entries (one per physical room).`);
+  }
+  for (let i = 0; i < numbers.length; i += 1) {
+    if (!numbers[i]) {
+      throw new Error(`roomNumbers[${i}] must be non-empty.`);
+    }
+  }
+  return numbers;
+}
+
 function ensureAmenities(value: unknown): string[] {
   if (value === undefined || value === null) {
     return [];
@@ -130,6 +160,8 @@ export function parseCreateRoomInput(payload: unknown): CreateRoomInput {
   const bedSize = ensureOptionalString(input.bedSize);
   const legacyBed = ensureOptionalString(input.bedSummary);
 
+  const unitCount = ensurePositiveInt(input.unitCount, "unitCount", 1);
+
   return {
     name,
     slug,
@@ -142,7 +174,8 @@ export function parseCreateRoomInput(payload: unknown): CreateRoomInput {
     floor: ensureOptionalString(input.floor),
     maxGuests: ensurePositiveInt(input.maxGuests, "maxGuests", 2),
     bedCount: ensurePositiveInt(input.bedCount, "bedCount", 1),
-    unitCount: ensurePositiveInt(input.unitCount, "unitCount", 1),
+    unitCount,
+    roomNumbers: ensureRoomNumbers(input.roomNumbers, unitCount),
     bedSize: bedSize ?? legacyBed,
     priceWeekday: ensureOptionalPrice(input.priceWeekday, "priceWeekday"),
     priceWeekend: ensureOptionalPrice(input.priceWeekend, "priceWeekend"),

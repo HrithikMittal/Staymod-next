@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import {
   BedDoubleIcon,
   Building2Icon,
+  HashIcon,
   HomeIcon,
   LayersIcon,
   MoreHorizontalIcon,
@@ -120,6 +121,15 @@ export function RoomListItemRow({ room, onEdit, onDelete }: RoomListItemRowProps
             <HomeIcon className="size-3.5 shrink-0 opacity-80" aria-hidden />
             {unitCount} room{unitCount === 1 ? "" : "s"}
           </span>
+          {room.roomNumbers && room.roomNumbers.length > 0 ? (
+            <span
+              className="inline-flex max-w-full items-center gap-1 rounded-md border border-border/60 bg-muted/35 px-2 py-0.5 text-xs text-muted-foreground"
+              title="Room numbers"
+            >
+              <HashIcon className="size-3.5 shrink-0 opacity-80" aria-hidden />
+              <span className="truncate">{room.roomNumbers.join(", ")}</span>
+            </span>
+          ) : null}
           {bedSize ? (
             <span
               className="inline-flex max-w-full items-center gap-1 rounded-md border border-border/60 bg-muted/35 px-2 py-0.5 text-xs text-muted-foreground"
