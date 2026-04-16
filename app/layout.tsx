@@ -32,9 +32,9 @@ export default function RootLayout({
         lang="en"
         className={`${inter.variable} ${mono.variable} h-full antialiased`}
       >
-        <body className="min-h-full flex flex-col bg-background text-foreground">
+        <body className="h-[100dvh] min-h-full overflow-hidden flex flex-col bg-background text-foreground">
           <AppProviders>
-            <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+            <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
           </AppProviders>
         </body>
       </html>

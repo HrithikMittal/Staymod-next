@@ -73,7 +73,7 @@ export function PropertySidebar({ propertyId }: PropertySidebarProps) {
   return (
     <aside
       className={cn(
-        "flex min-h-0 shrink-0 flex-col border-sidebar-border border-r bg-sidebar",
+        "sticky top-0 flex h-[100dvh] min-h-0 shrink-0 self-start flex-col border-sidebar-border border-r bg-sidebar",
         "transition-[width] duration-200 ease-out motion-reduce:transition-none",
         collapsed ? "w-[52px]" : "w-[220px]",
         "animate-[property-sidebar-in_0.45s_cubic-bezier(0.22,1,0.36,1)_both] motion-reduce:animate-none",

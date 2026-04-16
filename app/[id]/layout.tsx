@@ -12,9 +12,9 @@ export default async function PropertyLayout({ children, params }: LayoutProps) 
   return (
     <>
       <PersistLastPropertyId propertyId={id} />
-      <div className="flex min-h-0 flex-1">
+      <div className="flex h-[100dvh] min-h-0 flex-1 overflow-hidden">
         <PropertySidebar propertyId={id} />
-        <div className="min-h-0 min-w-0 flex-1 overflow-auto">{children}</div>
+        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden">{children}</div>
       </div>
     </>
   );
