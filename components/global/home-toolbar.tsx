@@ -11,9 +11,17 @@ export function HomeToolbar() {
 
   return (
     <div className="flex items-center justify-between gap-3 pb-6">
-      <Link href="/" className="font-semibold tracking-tight">
-        Staymod
-      </Link>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <Link href="/" className="font-semibold tracking-tight">
+          Staymod
+        </Link>
+        <Link
+          href="/integration-guide"
+          className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+        >
+          Integration guide
+        </Link>
+      </div>
       <div className="flex min-h-[2rem] items-center gap-3">
         {!isLoaded ? null : isSignedIn ? (
           <>
