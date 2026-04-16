@@ -1,6 +1,7 @@
 "use client";
 
-import type { BookingListItem } from "@/api-clients/bookings";
+import type { BookingListItem, CreateBookingPayload } from "@/api-clients/bookings";
+import { updateBooking } from "@/api-clients/bookings";
 import type { RoomListItem } from "@/api-clients/rooms";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +12,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { bookingIncludesUtcNight } from "@/utils/date-key";
 import { CalendarIcon } from "lucide-react";
 import Link from "next/link";
@@ -66,12 +68,30 @@ function roomSummaryForBooking(booking: BookingListItem, roomById: Map<string, R
     .join(", ");
 }
 
+function payloadFromBooking(booking: BookingListItem): CreateBookingPayload {
+  return {
+    guestName: booking.guestName,
+    guestEmail: booking.guestEmail,
+    checkIn: booking.checkIn,
+    checkOut: booking.checkOut,
+    advanceAmount: booking.advanceAmount,
+    status: "cancelled",
+    rooms: Object.fromEntries(
+      Object.entries(booking.rooms).map(([roomId, row]) => [
+        roomId,
+        { quantity: row.quantity, roomNumbers: row.roomNumbers },
+      ]),
+    ),
+  };
+}
+
 type DateBookingsSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   dateKey: string | null;
   roomIdFilter?: string | null;
   onRoomIdFilterChange?: (roomId: string | null) => void;
+  onEditBooking?: (booking: BookingListItem) => void;
   propertyId: string;
   bookings: BookingListItem[];
   bookingsLoading: boolean;
@@ -85,12 +105,14 @@ export function DateBookingsSheet({
   dateKey,
   roomIdFilter = null,
   onRoomIdFilterChange,
+  onEditBooking,
   propertyId,
   bookings,
   bookingsLoading,
   bookingsError,
   rooms,
 }: DateBookingsSheetProps) {
+  const queryClient = useQueryClient();
   const roomById = useMemo(() => {
     const m = new Map<string, RoomListItem>();
     rooms?.forEach((r) => m.set(r._id, r));
@@ -126,6 +148,15 @@ export function DateBookingsSheet({
 
   const title = dateKey ? formatSheetDate(dateKey) : "";
   const filterRoomName = roomIdFilter != null ? (roomById.get(roomIdFilter)?.name ?? "Selected room") : null;
+
+  const cancelMutation = useMutation({
+    mutationFn: async (booking: BookingListItem) =>
+      updateBooking(propertyId, booking._id, payloadFromBooking(booking)),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["bookings", propertyId] });
+      await queryClient.invalidateQueries({ queryKey: ["room-availability", propertyId] });
+    },
+  });
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -184,7 +215,37 @@ export function DateBookingsSheet({
                       booking.status === "cancelled" && "opacity-60",
                     )}
                   >
-                    <p className="font-medium">{booking.guestName}</p>
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="font-medium">{booking.guestName}</p>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          size="xs"
+                          variant="outline"
+                          onClick={() => onEditBooking?.(booking)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          type="button"
+                          size="xs"
+                          variant="destructive"
+                          onClick={() => {
+                            if (!window.confirm("Cancel this booking? This will free room availability.")) {
+                              return;
+                            }
+                            cancelMutation.mutate(booking);
+                          }}
+                          disabled={booking.status === "cancelled" || cancelMutation.isPending}
+                        >
+                          {booking.status === "cancelled"
+                            ? "Cancelled"
+                            : cancelMutation.isPending && cancelMutation.variables?._id === booking._id
+                              ? "Cancelling..."
+                              : "Cancel"}
+                        </Button>
+                      </div>
+                    </div>
                     <p className="text-muted-foreground mt-0.5">{summary}</p>
                     <p className="text-muted-foreground mt-1 inline-flex items-center gap-1.5 text-xs">
                       <CalendarIcon className="size-3.5 shrink-0 opacity-70" aria-hidden />
@@ -203,6 +264,9 @@ export function DateBookingsSheet({
               })}
             </ul>
           )}
+          {cancelMutation.isError ? (
+            <p className="text-destructive mt-3 text-sm">{cancelMutation.error.message}</p>
+          ) : null}
         </div>
 
         <div className="border-border/60 border-t px-4 py-3">

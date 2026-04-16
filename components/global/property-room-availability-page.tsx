@@ -1,6 +1,6 @@
 "use client";
 
-import type { CreateBookingPayload, ListBookingsResponse } from "@/api-clients/bookings";
+import type { BookingListItem, CreateBookingPayload, ListBookingsResponse } from "@/api-clients/bookings";
 import type { ListRoomsResponse } from "@/api-clients/rooms";
 import { CreateBookingDialog } from "@/components/global/create-booking-dialog";
 import { DateBookingsSheet } from "@/components/global/date-bookings-sheet";
@@ -76,7 +76,8 @@ export function PropertyRoomAvailabilityPage() {
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
   const [selectedRoomIdFilter, setSelectedRoomIdFilter] = useState<string | null>(null);
   const [quickBookingForm, setQuickBookingForm] = useState<Partial<CreateBookingPayload> | null>(null);
-  const quickBookingOpen = quickBookingForm !== null;
+  const [editingBooking, setEditingBooking] = useState<BookingListItem | null>(null);
+  const quickBookingOpen = quickBookingForm !== null || editingBooking !== null;
   const [isAtStart, setIsAtStart] = useState(true);
   const [isAtEnd, setIsAtEnd] = useState(false);
 
@@ -113,6 +114,7 @@ export function PropertyRoomAvailabilityPage() {
   }, [roomsQuery.data?.rooms]);
 
   function openQuickBooking(roomId: string, dateKey: string, unitLabel: string) {
+    setEditingBooking(null);
     const room = roomById.get(roomId);
     const configuredNumbers = (room?.roomNumbers ?? []).map((n) => n.trim()).filter(Boolean);
     const selectedNumber = configuredNumbers.includes(unitLabel) ? [unitLabel] : undefined;
@@ -128,6 +130,13 @@ export function PropertyRoomAvailabilityPage() {
   function openBookingsForCell(roomId: string, dateKey: string) {
     setSelectedRoomIdFilter(roomId);
     setSelectedDateKey(dateKey);
+  }
+
+  function openEditBookingFromSheet(booking: BookingListItem) {
+    setSelectedDateKey(null);
+    setSelectedRoomIdFilter(null);
+    setQuickBookingForm(null);
+    setEditingBooking(booking);
   }
 
   function extendRange(direction: "left" | "right") {
@@ -357,6 +366,7 @@ export function PropertyRoomAvailabilityPage() {
         dateKey={selectedDateKey}
         roomIdFilter={selectedRoomIdFilter}
         onRoomIdFilterChange={setSelectedRoomIdFilter}
+        onEditBooking={openEditBookingFromSheet}
         propertyId={propertyId}
         bookings={bookingsQuery.data?.bookings ?? []}
         bookingsLoading={bookingsQuery.isLoading}
@@ -371,11 +381,12 @@ export function PropertyRoomAvailabilityPage() {
           existingBookings={bookingsQuery.data?.bookings ?? []}
           roomsLoading={roomsQuery.isLoading}
           open={quickBookingOpen}
-          booking={null}
+          booking={editingBooking}
           initialFormOverride={quickBookingForm}
           onOpenChange={(open) => {
             if (!open) {
               setQuickBookingForm(null);
+              setEditingBooking(null);
             }
           }}
         />
