@@ -13,7 +13,11 @@ export {
 } from "./room";
 
 /** Booking create/parse helpers (room type resolved from `Room`). */
-export { createBookingDocument, parseCreateBookingInput } from "./booking";
+export {
+  createBookingDocument,
+  parseBookingId,
+  parseCreateBookingBody,
+} from "./booking";
 
 /** Room availability document helpers. */
 export {

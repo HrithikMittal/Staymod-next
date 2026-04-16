@@ -132,7 +132,7 @@ export function PropertySidebar({ propertyId }: PropertySidebarProps) {
       </div>
       <div className={cn("flex min-h-0 flex-1 flex-col gap-1 overflow-auto py-3", collapsed ? "px-1.5" : "px-2")}>
         <nav aria-label="Property" className="flex flex-col gap-px">
-          {items.map(({ href, label, icon: Icon, match }, index) => {
+          {items.map(({ href, label, icon: Icon, match }) => {
             const active = match(pathname);
             const linkClass = cn(
               "group relative flex items-center overflow-hidden rounded-md py-1.5",

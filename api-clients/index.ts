@@ -16,3 +16,11 @@ export {
   type ListRoomsResponse,
   type RoomListItem,
 } from "./rooms";
+export {
+  createBooking,
+  fetchBookings,
+  updateBooking,
+  type BookingListItem,
+  type CreateBookingPayload,
+  type ListBookingsResponse,
+} from "./bookings";

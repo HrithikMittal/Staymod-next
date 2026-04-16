@@ -10,32 +10,60 @@ export const BOOKING_STATUSES = ["pending", "confirmed", "cancelled", "no_show"]
 
 export type BookingStatus = (typeof BOOKING_STATUSES)[number];
 
+export type BookingRoomAllocation = {
+  /** Denormalized from Room for availability buckets. */
+  roomType: RoomType;
+  /** Number of units from this room listing. */
+  quantity: number;
+  /** Optional selected physical room numbers/labels. */
+  roomNumbers?: string[];
+};
+
+/** Map keyed by roomId string to requested allocation for that listing. */
+export type BookingRoomsMap = Record<string, BookingRoomAllocation>;
+
 /**
  * A reservation against a specific {@link Room} listing row. Inventory is tracked per
- * `roomType` on {@link RoomAvailability}; `roomType` is denormalized from the room for fast updates.
+ * `roomType` on {@link RoomAvailability}; `roomType` is denormalized from each selected room.
  */
 export type Booking = OrganizationScope & {
   _id: ObjectId;
   propertyId: ObjectId;
-  /** Listing row this booking consumes; capacity bucket is `room.type`. */
-  roomId: ObjectId;
-  /** Denormalized from `Room.type` — must match `roomId`’s room. */
-  roomType: RoomType;
+  /** Multi-room allocation map keyed by roomId. */
+  rooms: BookingRoomsMap;
+  /** @deprecated legacy single-room shape retained for backward compatibility. */
+  roomId?: ObjectId;
+  /** @deprecated legacy single-room shape retained for backward compatibility. */
+  roomType?: RoomType;
   guestName: string;
   guestEmail?: string;
   /** First night (inclusive), property/UTC policy should match `dateKey` generation. */
   checkIn: Date;
   /** Last morning / departure (exclusive): nights are `[checkIn, checkOut)`. */
   checkOut: Date;
-  /** Physical units of this listing booked per night (≤ that room’s `unitCount`). */
-  quantity: number;
+  /** @deprecated legacy single-room shape retained for backward compatibility. */
+  quantity?: number;
+  /** Amount received in advance from guest at booking time. */
+  advanceAmount?: number;
   status: BookingStatus;
   createdAt: Date;
   updatedAt: Date;
 };
 
-/** Payload before server attaches `orgId`, `roomType` (from `Room`), and timestamps. */
-export type CreateBookingInput = Omit<
-  Booking,
-  "_id" | "orgId" | "roomType" | "createdAt" | "updatedAt"
->;
+export type CreateBookingRoomInput = {
+  roomId: ObjectId;
+  quantity: number;
+  roomNumbers?: string[];
+};
+
+/** Payload before server attaches org/timestamps and computes denormalized roomType map. */
+export type CreateBookingInput = {
+  propertyId: ObjectId;
+  guestName: string;
+  guestEmail?: string;
+  checkIn: Date;
+  checkOut: Date;
+  rooms: CreateBookingRoomInput[];
+  advanceAmount?: number;
+  status: BookingStatus;
+};

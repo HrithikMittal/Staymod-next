@@ -1,0 +1,119 @@
+"use client";
+
+import type { BookingListItem } from "@/api-clients/bookings";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
+import { CalendarIcon, MoreHorizontalIcon, PencilIcon, UserIcon } from "lucide-react";
+import { formatMoney } from "@/utils/booking-pricing";
+
+function formatRange(checkIn: string, checkOut: string) {
+  const a = new Date(checkIn);
+  const b = new Date(checkOut);
+  const opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric", year: "numeric" };
+  return `${a.toLocaleDateString(undefined, opts)} → ${b.toLocaleDateString(undefined, opts)}`;
+}
+
+function statusClass(status: string) {
+  switch (status) {
+    case "confirmed":
+      return "bg-emerald-500";
+    case "pending":
+      return "bg-amber-500";
+    case "cancelled":
+      return "bg-muted-foreground/50";
+    case "no_show":
+      return "bg-rose-500";
+    default:
+      return "bg-muted-foreground/50";
+  }
+}
+
+type BookingListItemRowProps = {
+  booking: BookingListItem;
+  roomSummary: string;
+  amountToPay?: number;
+  remainingAmount?: number;
+  onEdit: (booking: BookingListItem) => void;
+};
+
+export function BookingListItemRow({
+  booking,
+  roomSummary,
+  amountToPay,
+  remainingAmount,
+  onEdit,
+}: BookingListItemRowProps) {
+  const statusLabel = booking.status.replace(/_/g, " ");
+
+  return (
+    <li className="border-border/60 border-b last:border-b-0">
+      <div className="flex flex-wrap items-start gap-3 px-5 py-4 sm:flex-nowrap sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-1 gap-3">
+          <div
+            className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-muted/30 text-muted-foreground"
+            aria-hidden
+          >
+            <UserIcon className="size-5" strokeWidth={1.5} />
+          </div>
+          <div className="min-w-0 space-y-1">
+            <p className="truncate font-medium">{booking.guestName}</p>
+            <p className="text-muted-foreground text-sm">
+              <span className="font-medium text-foreground">{roomSummary}</span>
+            </p>
+            <p className="inline-flex items-center gap-1.5 text-muted-foreground text-xs">
+              <CalendarIcon className="size-3.5 shrink-0 opacity-70" aria-hidden />
+              {formatRange(booking.checkIn, booking.checkOut)}
+            </p>
+            <p className="text-xs font-medium text-foreground/90">
+              Amount to pay: {formatMoney(amountToPay ?? 0)}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Advance: {formatMoney(booking.advanceAmount ?? 0)} · Remaining:{" "}
+              {formatMoney(remainingAmount ?? Math.max(0, (amountToPay ?? 0) - (booking.advanceAmount ?? 0)))}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex w-full shrink-0 items-center justify-between gap-2 sm:w-auto sm:justify-end">
+          <span
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/30 px-2 py-0.5 text-xs font-medium capitalize",
+            )}
+            title={`Status: ${statusLabel}`}
+          >
+            <span className={cn("size-1.5 shrink-0 rounded-full", statusClass(booking.status))} aria-hidden />
+            {statusLabel}
+          </span>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-muted-foreground opacity-80 hover:opacity-100"
+                  aria-label="Booking actions"
+                />
+              }
+            >
+              <MoreHorizontalIcon className="size-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" sideOffset={6} className="min-w-[120px]">
+              <DropdownMenuItem onClick={() => onEdit(booking)}>
+                <PencilIcon className="size-4" />
+                Edit
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+    </li>
+  );
+}

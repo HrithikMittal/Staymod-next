@@ -68,8 +68,93 @@ export async function getEffectiveRemainingRooms(
 
 type BookingInventorySlice = Pick<
   Booking,
-  "orgId" | "propertyId" | "roomType" | "checkIn" | "checkOut" | "quantity" | "status"
+  "orgId" | "propertyId" | "checkIn" | "checkOut" | "status" | "rooms" | "roomType" | "quantity"
 >;
+
+function bookingLines(booking: BookingInventorySlice): Array<{ roomType: RoomType; quantity: number }> {
+  if (booking.rooms && Object.keys(booking.rooms).length > 0) {
+    return Object.values(booking.rooms).map((row) => ({
+      roomType: row.roomType,
+      quantity: row.quantity,
+    }));
+  }
+  if (booking.roomType && booking.quantity) {
+    return [{ roomType: booking.roomType, quantity: booking.quantity }];
+  }
+  return [];
+}
+
+/**
+ * Ensures each night in the stay has at least `quantity` remaining units for `roomType`.
+ */
+export async function assertAvailabilityForBooking(
+  db: Db,
+  orgId: string,
+  propertyId: ObjectId,
+  roomType: RoomType,
+  checkIn: Date,
+  checkOut: Date,
+  quantity: number,
+): Promise<void> {
+  const nights = eachUtcNightDateKeysBetween(checkIn, checkOut);
+  for (const dateKey of nights) {
+    const effective = await getEffectiveRemainingRooms(db, orgId, propertyId, dateKey, roomType);
+    if (effective < quantity) {
+      throw new Error(
+        `Not enough availability on ${dateKey} (need ${quantity} unit(s), ${effective} left).`,
+      );
+    }
+  }
+}
+
+/**
+ * Returns previously deducted units to inventory for each night (cancel, or before updating a booking).
+ */
+export async function returnInventoryForBooking(booking: BookingInventorySlice): Promise<void> {
+  const db = await getDb();
+  const nights = eachUtcNightDateKeysBetween(booking.checkIn, booking.checkOut);
+  const now = new Date();
+  const lines = bookingLines(booking);
+
+  for (const line of lines) {
+    for (const dateKey of nights) {
+      const defaultCap = await getDefaultInventoryForRoomType(
+        db,
+        booking.orgId,
+        booking.propertyId,
+        line.roomType,
+      );
+      const effective = await getEffectiveRemainingRooms(
+        db,
+        booking.orgId,
+        booking.propertyId,
+        dateKey,
+        line.roomType,
+      );
+      const next = Math.min(defaultCap, effective + line.quantity);
+
+      await db.collection<RoomAvailability>(ROOM_AVAILABILITY_COLLECTION).updateOne(
+        {
+          orgId: booking.orgId,
+          propertyId: booking.propertyId,
+          dateKey,
+          roomType: line.roomType,
+        },
+        {
+          $set: { noOfRooms: next, updatedAt: now },
+          $setOnInsert: {
+            orgId: booking.orgId,
+            propertyId: booking.propertyId,
+            dateKey,
+            roomType: line.roomType,
+            createdAt: now,
+          },
+        },
+        { upsert: true },
+      );
+    }
+  }
+}
 
 /**
  * After inserting/updating a non-cancelled booking, subtract `quantity` for each night in
@@ -84,85 +169,45 @@ export async function applyBookingInventoryDeduction(booking: BookingInventorySl
   const db = await getDb();
   const nights = eachUtcNightDateKeysBetween(booking.checkIn, booking.checkOut);
   const now = new Date();
+  const lines = bookingLines(booking);
 
-  for (const dateKey of nights) {
-    const effective = await getEffectiveRemainingRooms(
-      db,
-      booking.orgId,
-      booking.propertyId,
-      dateKey,
-      booking.roomType,
-    );
-    const next = Math.max(0, effective - booking.quantity);
-
-    await db.collection<RoomAvailability>(ROOM_AVAILABILITY_COLLECTION).updateOne(
-      {
-        orgId: booking.orgId,
-        propertyId: booking.propertyId,
+  for (const line of lines) {
+    for (const dateKey of nights) {
+      const effective = await getEffectiveRemainingRooms(
+        db,
+        booking.orgId,
+        booking.propertyId,
         dateKey,
-        roomType: booking.roomType,
-      },
-      {
-        $set: { noOfRooms: next, updatedAt: now },
-        $setOnInsert: {
+        line.roomType,
+      );
+      const next = Math.max(0, effective - line.quantity);
+
+      await db.collection<RoomAvailability>(ROOM_AVAILABILITY_COLLECTION).updateOne(
+        {
           orgId: booking.orgId,
           propertyId: booking.propertyId,
           dateKey,
-          roomType: booking.roomType,
-          createdAt: now,
+          roomType: line.roomType,
         },
-      },
-      { upsert: true },
-    );
+        {
+          $set: { noOfRooms: next, updatedAt: now },
+          $setOnInsert: {
+            orgId: booking.orgId,
+            propertyId: booking.propertyId,
+            dateKey,
+            roomType: line.roomType,
+            createdAt: now,
+          },
+        },
+        { upsert: true },
+      );
+    }
   }
 }
 
 /**
- * When a booking is cancelled, add `quantity` back per night, capped at the Room-schema default
- * capacity for that type (cannot exceed physical `unitCount` sum).
+ * When a booking is cancelled, add `quantity` back per night (same as {@link returnInventoryForBooking}).
  */
 export async function restoreBookingInventory(booking: BookingInventorySlice): Promise<void> {
-  if (booking.status !== "cancelled") {
-    return;
-  }
-  const db = await getDb();
-  const nights = eachUtcNightDateKeysBetween(booking.checkIn, booking.checkOut);
-  const now = new Date();
-
-  for (const dateKey of nights) {
-    const defaultCap = await getDefaultInventoryForRoomType(
-      db,
-      booking.orgId,
-      booking.propertyId,
-      booking.roomType,
-    );
-    const effective = await getEffectiveRemainingRooms(
-      db,
-      booking.orgId,
-      booking.propertyId,
-      dateKey,
-      booking.roomType,
-    );
-    const next = Math.min(defaultCap, effective + booking.quantity);
-
-    await db.collection<RoomAvailability>(ROOM_AVAILABILITY_COLLECTION).updateOne(
-      {
-        orgId: booking.orgId,
-        propertyId: booking.propertyId,
-        dateKey,
-        roomType: booking.roomType,
-      },
-      {
-        $set: { noOfRooms: next, updatedAt: now },
-        $setOnInsert: {
-          orgId: booking.orgId,
-          propertyId: booking.propertyId,
-          dateKey,
-          roomType: booking.roomType,
-          createdAt: now,
-        },
-      },
-      { upsert: true },
-    );
-  }
+  return returnInventoryForBooking(booking);
 }

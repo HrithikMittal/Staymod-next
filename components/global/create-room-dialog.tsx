@@ -101,6 +101,7 @@ export function CreateRoomDialog({
       setExtraAmenitiesText("");
     }
     setRoomNumberError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- room identity via _id + updatedAt
   }, [open, room?._id, room?.updatedAt]);
 
   function handleOpenChange(next: boolean) {
