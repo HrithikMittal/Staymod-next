@@ -80,6 +80,7 @@ export function PropertyRoomAvailabilityPage() {
   const quickBookingOpen = quickBookingForm !== null || editingBooking !== null;
   const [isAtStart, setIsAtStart] = useState(true);
   const [isAtEnd, setIsAtEnd] = useState(false);
+  const [roomColumnWidth, setRoomColumnWidth] = useState(220);
 
   const query = useApiQuery<RoomAvailabilityResponse>(
     ["room-availability", propertyId, from, to],
@@ -155,18 +156,33 @@ export function PropertyRoomAvailabilityPage() {
     setIsAtEnd(scrollLeft + clientWidth >= scrollWidth - threshold);
   }
 
+  function startRoomColumnResize(event: React.PointerEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = roomColumnWidth;
+    const minWidth = 200;
+    const maxWidth = 520;
+
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      const nextWidth = Math.round(startWidth + (moveEvent.clientX - startX));
+      setRoomColumnWidth(Math.max(minWidth, Math.min(maxWidth, nextWidth)));
+    };
+
+    const onPointerUp = () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+    };
+
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+  }
+
   return (
     <main className="mx-auto flex w-full max-w-[1280px] flex-col gap-6 px-4 pt-3 pb-8 md:px-6">
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
           <div className="flex min-w-0 flex-1 flex-col gap-1.5">
             <h1 className="text-2xl font-semibold tracking-tight">Room availability</h1>
-            <p className="text-sm text-muted-foreground">
-              Nightly rates are edited on the room listing row (e.g. Standard King); unit rows below show
-              only Free or Full. Click a rate cell to set a custom price for that night or clear to use
-              the weekday/weekend default. Weekend nights (Fri–Sat) are highlighted. Click a date column
-              header to see bookings for that night.
-            </p>
           </div>
           <div className="w-full shrink-0 sm:w-auto sm:max-w-[min(100%,26rem)]">
             <DateRangePicker
@@ -210,7 +226,10 @@ export function PropertyRoomAvailabilityPage() {
             <table className="min-w-max border-separate border-spacing-0">
               <thead>
                 <tr>
-                  <th className="sticky left-0 z-30 min-w-[220px] border-border/60 border-b border-r border-border bg-card px-4 py-3 text-left text-sm font-semibold shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)] dark:shadow-[2px_0_4px_-2px_rgba(0,0,0,0.35)]">
+                  <th
+                    className="sticky left-0 z-30 border-border/60 border-b border-r border-border bg-card px-4 py-3 text-left text-sm font-semibold shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)] dark:shadow-[2px_0_4px_-2px_rgba(0,0,0,0.35)]"
+                    style={{ width: roomColumnWidth, minWidth: roomColumnWidth }}
+                  >
                     <div className="flex items-center justify-between gap-2">
                       <span>Room / unit</span>
                       <div className="flex items-center gap-1">
@@ -228,6 +247,13 @@ export function PropertyRoomAvailabilityPage() {
                         ) : null}
                       </div>
                     </div>
+                    <div
+                      role="separator"
+                      aria-label="Resize room column"
+                      aria-orientation="vertical"
+                      className="absolute top-0 right-0 h-full w-2 cursor-col-resize touch-none"
+                      onPointerDown={startRoomColumnResize}
+                    />
                   </th>
                   {query.data?.days.map((day, index, arr) => {
                     const formatted = formatDay(day.dateKey);
@@ -280,7 +306,10 @@ export function PropertyRoomAvailabilityPage() {
                 {groupedRows.map((group) => (
                   <Fragment key={group.roomId}>
                     <tr className="bg-muted/35">
-                      <td className="sticky left-0 z-20 border-border/60 border-b border-r border-border bg-muted px-4 py-2.5 align-middle shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)] dark:shadow-[2px_0_4px_-2px_rgba(0,0,0,0.35)]">
+                      <td
+                        className="sticky left-0 z-20 border-border/60 border-b border-r border-border bg-muted px-4 py-2.5 align-middle shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)] dark:shadow-[2px_0_4px_-2px_rgba(0,0,0,0.35)]"
+                        style={{ width: roomColumnWidth, minWidth: roomColumnWidth }}
+                      >
                         <p className="text-sm font-semibold tracking-tight">{group.listingName}</p>
                         <p className="mt-0.5 text-[11px] capitalize text-muted-foreground">
                           {formatRoomTypeLabel(group.roomType)}
@@ -320,8 +349,11 @@ export function PropertyRoomAvailabilityPage() {
                     </tr>
                     {group.unitRows.map((row) => (
                       <tr key={row.rowId}>
-                        <td className="sticky left-0 z-20 border-border/60 border-b border-r border-border bg-card py-2.5 pr-3 pl-8 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)] dark:shadow-[2px_0_4px_-2px_rgba(0,0,0,0.35)]">
-                          <p className="text-[13px] font-medium text-foreground">{row.unitLabel}</p>
+                        <td
+                          className="sticky left-0 z-20 border-border/60 border-b border-r border-border bg-card py-2.5 pr-3 pl-8 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)] dark:shadow-[2px_0_4px_-2px_rgba(0,0,0,0.35)]"
+                          style={{ width: roomColumnWidth, minWidth: roomColumnWidth }}
+                        >
+                          <p className="text-right text-[13px] font-medium text-foreground">{row.unitLabel}</p>
                         </td>
                         {row.cells.map((cell) => (
                           <td

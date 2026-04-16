@@ -6,11 +6,13 @@ import { FormEvent, useState } from "react";
 
 import type { BookingListItem, CreateBookingPayload } from "@/api-clients/bookings";
 import { createBooking, updateBooking } from "@/api-clients/bookings";
+import type { ListBookingOptionsResponse } from "@/api-clients/booking-options";
 import type { RoomListItem } from "@/api-clients/rooms";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useApiQuery } from "@/hooks";
 import { cn } from "@/lib/utils";
 import { BOOKING_STATUSES } from "@/types/booking";
 import { calculateBookingAmount, calculateNightsCount, formatMoney } from "@/utils/booking-pricing";
@@ -22,6 +24,9 @@ const EMPTY: CreateBookingPayload = {
   checkIn: "",
   checkOut: "",
   quantity: 1,
+  numberOfGuests: 1,
+  selectedOptions: [],
+  customItems: [],
   advanceAmount: 0,
   status: "confirmed",
 };
@@ -47,6 +52,9 @@ function initialFormFromBooking(booking: BookingListItem): CreateBookingPayload 
     checkOut: isoDateOnly(booking.checkOut),
     quantity: firstRoom?.quantity ?? 1,
     roomNumbers: firstRoom?.roomNumbers,
+    numberOfGuests: booking.numberOfGuests ?? 1,
+    selectedOptions: booking.selectedOptions ?? [],
+    customItems: booking.customItems ?? [],
     advanceAmount: booking.advanceAmount ?? 0,
     status: booking.status as CreateBookingPayload["status"],
   };
@@ -154,6 +162,16 @@ type RoomSelection = {
   roomNumbers?: string[];
 };
 
+type SelectedOptionDraft = {
+  bookingOptionId: string;
+  quantity: number;
+};
+
+type CustomItemDraft = {
+  name: string;
+  amount: number;
+};
+
 function initialRoomSelections(initialForm: CreateBookingPayload): RoomSelection[] {
   if (initialForm.rooms && Object.keys(initialForm.rooms).length > 0) {
     return Object.entries(initialForm.rooms).map(([roomId, row]) => ({
@@ -207,16 +225,35 @@ function BookingForm({
 }: BookingFormProps) {
   const queryClient = useQueryClient();
   const isEdit = Boolean(booking);
+  const bookingOptionsQuery = useApiQuery<ListBookingOptionsResponse>(
+    ["booking-options", propertyId],
+    `/api/properties/${propertyId}/booking-options`,
+    undefined,
+    { enabled: Boolean(propertyId) },
+  );
+  const activeBookingOptions = (bookingOptionsQuery.data?.bookingOptions ?? []).filter((o) => o.isActive);
   const [form, setForm] = useState<Omit<CreateBookingPayload, "roomId" | "quantity">>({
     guestName: initialForm.guestName,
     guestEmail: initialForm.guestEmail,
     checkIn: initialForm.checkIn,
     checkOut: initialForm.checkOut,
+    numberOfGuests: Math.max(1, initialForm.numberOfGuests ?? 1),
+    selectedOptions: initialForm.selectedOptions ?? [],
+    customItems: initialForm.customItems ?? [],
     advanceAmount: initialForm.advanceAmount ?? 0,
     status: initialForm.status,
   });
   const [roomSelections, setRoomSelections] = useState<RoomSelection[]>(() =>
     initialRoomSelections(initialForm),
+  );
+  const [selectedOptionDrafts, setSelectedOptionDrafts] = useState<SelectedOptionDraft[]>(() =>
+    (initialForm.selectedOptions ?? []).map((row) => ({
+      bookingOptionId: row.bookingOptionId,
+      quantity: Math.max(1, row.quantity || 1),
+    })),
+  );
+  const [customItemsDrafts, setCustomItemsDrafts] = useState<CustomItemDraft[]>(
+    () => (initialForm.customItems ?? []).map((c) => ({ name: c.name, amount: c.amount })),
   );
 
   const saveMutation = useMutation({
@@ -229,8 +266,35 @@ function BookingForm({
         throw new Error("Each room type can only be selected once.");
       }
 
+      const optionsById = new Map(activeBookingOptions.map((o) => [o._id, o]));
+      const selectedOptions = selectedOptionDrafts
+        .filter((row) => row.bookingOptionId)
+        .map((row) => {
+          const option = optionsById.get(row.bookingOptionId);
+          if (!option) {
+            throw new Error("One or more selected booking options are no longer available.");
+          }
+          return {
+            bookingOptionId: option._id,
+            name: option.name,
+            appliesTo: option.appliesTo,
+            frequency: option.frequency,
+            pricePerUnit: option.pricePerUnit,
+            quantity: Math.max(1, row.quantity || 1),
+          };
+        });
+      const customItems = customItemsDrafts
+        .map((row) => ({
+          name: row.name.trim(),
+          amount: Math.max(0, Number(row.amount) || 0),
+        }))
+        .filter((row) => row.name.length > 0);
+
       const payloadBase = {
         ...form,
+        numberOfGuests: Math.max(1, Number(form.numberOfGuests) || 1),
+        selectedOptions,
+        customItems,
         guestEmail: form.guestEmail?.trim() || undefined,
         advanceAmount: Math.max(0, Number(form.advanceAmount) || 0),
         status: form.status ?? "confirmed",
@@ -327,22 +391,77 @@ function BookingForm({
     setRoomSelections((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev));
   }
 
+  function addSelectedOptionDraft() {
+    const first = activeBookingOptions[0]?._id ?? "";
+    setSelectedOptionDrafts((prev) => [...prev, { bookingOptionId: first, quantity: 1 }]);
+  }
+
+  function updateSelectedOptionDraft(index: number, patch: Partial<SelectedOptionDraft>) {
+    setSelectedOptionDrafts((prev) => prev.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+  }
+
+  function removeSelectedOptionDraft(index: number) {
+    setSelectedOptionDrafts((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function addCustomItemDraft() {
+    setCustomItemsDrafts((prev) => [...prev, { name: "", amount: 0 }]);
+  }
+
+  function updateCustomItemDraft(index: number, patch: Partial<CustomItemDraft>) {
+    setCustomItemsDrafts((prev) => prev.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+  }
+
+  function removeCustomItemDraft(index: number) {
+    setCustomItemsDrafts((prev) => prev.filter((_, i) => i !== index));
+  }
+
   const hasDuplicateSelections = hasDuplicateRoomSelections(roomSelections);
   const roomById = new Map(rooms.map((room) => [room._id, room]));
+  const bookingOptionsById = new Map(activeBookingOptions.map((opt) => [opt._id, opt]));
   const nights = calculateNightsCount(form.checkIn, form.checkOut);
+  const guestMultiplier = Math.max(1, Number(form.numberOfGuests) || 1);
+  const selectedOptionsPricing = selectedOptionDrafts
+    .filter((row) => row.bookingOptionId)
+    .map((row) => {
+      const option = bookingOptionsById.get(row.bookingOptionId);
+      const quantity = Math.max(1, row.quantity || 1);
+      if (!option) {
+        return null;
+      }
+      const multiplier = option.frequency === "day" ? Math.max(1, nights) : 1;
+      return {
+        key: option._id,
+        label: option.name,
+        quantity,
+        subtotal: option.pricePerUnit * quantity * multiplier,
+      };
+    })
+    .filter((row): row is { key: string; label: string; quantity: number; subtotal: number } => row !== null);
+  const customItemsPricing = customItemsDrafts
+    .map((row, idx) => ({
+      key: `custom-${idx}`,
+      label: row.name.trim() || "Custom item",
+      subtotal: Math.max(0, Number(row.amount) || 0),
+    }))
+    .filter((row) => row.label.trim().length > 0);
+  const extrasAmount =
+    selectedOptionsPricing.reduce((sum, row) => sum + row.subtotal, 0) +
+    customItemsPricing.reduce((sum, row) => sum + row.subtotal, 0);
+  const roomTotalSingleGuest = roomSelections.reduce((sum, selection) => {
+    const room = roomById.get(selection.roomId);
+    return (
+      sum +
+      calculateBookingAmount(form.checkIn, form.checkOut, selection.quantity, {
+        priceWeekday: room?.priceWeekday,
+        priceWeekend: room?.priceWeekend,
+      })
+    );
+  }, 0);
   const estimatedAmount =
     form.status === "cancelled"
       ? 0
-      : roomSelections.reduce((sum, selection) => {
-          const room = roomById.get(selection.roomId);
-          return (
-            sum +
-            calculateBookingAmount(form.checkIn, form.checkOut, selection.quantity, {
-              priceWeekday: room?.priceWeekday,
-              priceWeekend: room?.priceWeekend,
-            })
-          );
-        }, 0);
+      : roomTotalSingleGuest * guestMultiplier + extrasAmount;
   const advanceAmount = Math.max(0, Number(form.advanceAmount) || 0);
   const remainingAmount = Math.max(0, estimatedAmount - advanceAmount);
   const roomBreakdown = roomSelections
@@ -352,7 +471,7 @@ function BookingForm({
       const subtotal = calculateBookingAmount(form.checkIn, form.checkOut, selection.quantity, {
         priceWeekday: room?.priceWeekday,
         priceWeekend: room?.priceWeekend,
-      });
+      }) * guestMultiplier;
       return {
         key: selection.roomId,
         label: room?.name ?? "Room",
@@ -363,48 +482,64 @@ function BookingForm({
 
   return (
     <form className="flex flex-col" onSubmit={handleSubmit}>
-      <div className="border-border/60 border-b px-6 pt-10 pb-4 pr-12">
-        <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-          {isEdit ? "Bookings · Edit" : "Bookings · New"}
-        </p>
-        <div className="mt-3 flex items-start gap-3">
-          <div
-            className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-muted/30 text-muted-foreground"
-            aria-hidden
-          >
-            <UserIcon className="size-5" strokeWidth={1.5} />
-          </div>
-          <div className="min-w-0 flex-1 space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="booking-guest">Guest name</Label>
-              <Input
-                id="booking-guest"
-                value={form.guestName}
-                onChange={(ev) => setForm((p) => ({ ...p, guestName: ev.target.value }))}
-                className={field}
-                required
-                autoComplete="name"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="booking-email">Email (optional)</Label>
-              <Input
-                id="booking-email"
-                type="email"
-                value={form.guestEmail ?? ""}
-                onChange={(ev) =>
-                  setForm((p) => ({ ...p, guestEmail: ev.target.value || undefined }))
-                }
-                className={field}
-                autoComplete="email"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div className="max-h-[min(60vh,480px)] overflow-y-auto px-6 py-4 pr-10">
         <div className="space-y-4">
+          <div className="border-border/60 border-b pb-4">
+            <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+              {isEdit ? "Bookings · Edit" : "Bookings · New"}
+            </p>
+            <div className="mt-3 flex items-start gap-3">
+              <div
+                className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-muted/30 text-muted-foreground"
+                aria-hidden
+              >
+                <UserIcon className="size-5" strokeWidth={1.5} />
+              </div>
+              <div className="min-w-0 flex-1 space-y-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="booking-guest">Guest name</Label>
+                  <Input
+                    id="booking-guest"
+                    value={form.guestName}
+                    onChange={(ev) => setForm((p) => ({ ...p, guestName: ev.target.value }))}
+                    className={field}
+                    required
+                    autoComplete="name"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="booking-email">Email (optional)</Label>
+                  <Input
+                    id="booking-email"
+                    type="email"
+                    value={form.guestEmail ?? ""}
+                    onChange={(ev) =>
+                      setForm((p) => ({ ...p, guestEmail: ev.target.value || undefined }))
+                    }
+                    className={field}
+                    autoComplete="email"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="booking-guests">Number of guests</Label>
+                  <Input
+                    id="booking-guests"
+                    type="number"
+                    min={1}
+                    value={form.numberOfGuests ?? 1}
+                    onChange={(ev) =>
+                      setForm((p) => ({
+                        ...p,
+                        numberOfGuests: Math.max(1, Number.parseInt(ev.target.value, 10) || 1),
+                      }))
+                    }
+                    className={field}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-2">
               <Label>Room type(s)</Label>
@@ -473,6 +608,110 @@ function BookingForm({
             {hasDuplicateSelections ? (
               <p className="text-xs text-destructive">Room types must be unique in one submission.</p>
             ) : null}
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <Label>Booking options</Label>
+              <Button type="button" variant="ghost" size="sm" onClick={addSelectedOptionDraft}>
+                <PlusIcon className="size-4" />
+                Add option
+              </Button>
+            </div>
+            {bookingOptionsQuery.isLoading ? (
+              <p className="text-xs text-muted-foreground">Loading booking options…</p>
+            ) : null}
+            {selectedOptionDrafts.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No booking options selected.</p>
+            ) : (
+              <div className="space-y-2">
+                {selectedOptionDrafts.map((row, idx) => (
+                  <div key={`selected-opt-${idx}`} className="grid grid-cols-[1fr_auto_auto] gap-2">
+                    <select
+                      value={row.bookingOptionId}
+                      onChange={(ev) =>
+                        updateSelectedOptionDraft(idx, { bookingOptionId: ev.target.value })
+                      }
+                      className={cn(field, "w-full cursor-pointer")}
+                    >
+                      <option value="">Select booking option</option>
+                      {activeBookingOptions.map((opt) => (
+                        <option key={opt._id} value={opt._id}>
+                          {opt.name} ({formatMoney(opt.pricePerUnit)} / {opt.frequency})
+                        </option>
+                      ))}
+                    </select>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={row.quantity}
+                      onChange={(ev) =>
+                        updateSelectedOptionDraft(idx, {
+                          quantity: Math.max(1, Number.parseInt(ev.target.value, 10) || 1),
+                        })
+                      }
+                      className={cn(field, "w-20")}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => removeSelectedOptionDraft(idx)}
+                      aria-label="Remove booking option"
+                    >
+                      <Trash2Icon className="size-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <Label>Custom extras</Label>
+              <Button type="button" variant="ghost" size="sm" onClick={addCustomItemDraft}>
+                <PlusIcon className="size-4" />
+                Add custom item
+              </Button>
+            </div>
+            {customItemsDrafts.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No custom extra items.</p>
+            ) : (
+              <div className="space-y-2">
+                {customItemsDrafts.map((row, idx) => (
+                  <div key={`custom-item-${idx}`} className="grid grid-cols-[1fr_auto_auto] gap-2">
+                    <Input
+                      placeholder="Item name (e.g. Late checkout)"
+                      value={row.name}
+                      onChange={(ev) => updateCustomItemDraft(idx, { name: ev.target.value })}
+                      className={cn(field, "w-full")}
+                    />
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={row.amount}
+                      onChange={(ev) =>
+                        updateCustomItemDraft(idx, {
+                          amount: Math.max(0, Number.parseFloat(ev.target.value) || 0),
+                        })
+                      }
+                      className={cn(field, "w-24")}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => removeCustomItemDraft(idx)}
+                      aria-label="Remove custom extra item"
+                    >
+                      <Trash2Icon className="size-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -559,6 +798,20 @@ function BookingForm({
                     <p className="text-muted-foreground">
                       {row.label} × {row.quantity}
                     </p>
+                    <p className="font-medium text-foreground">{formatMoney(row.subtotal)}</p>
+                  </div>
+                ))}
+                {selectedOptionsPricing.map((row) => (
+                  <div key={`opt-${row.key}`} className="flex items-center justify-between gap-2 text-xs">
+                    <p className="text-muted-foreground">
+                      {row.label} × {row.quantity}
+                    </p>
+                    <p className="font-medium text-foreground">{formatMoney(row.subtotal)}</p>
+                  </div>
+                ))}
+                {customItemsPricing.map((row) => (
+                  <div key={row.key} className="flex items-center justify-between gap-2 text-xs">
+                    <p className="text-muted-foreground">{row.label}</p>
                     <p className="font-medium text-foreground">{formatMoney(row.subtotal)}</p>
                   </div>
                 ))}

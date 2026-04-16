@@ -9,6 +9,16 @@ export type BookingListItem = {
   guestEmail?: string;
   checkIn: string;
   checkOut: string;
+  numberOfGuests?: number;
+  selectedOptions?: Array<{
+    bookingOptionId: string;
+    name: string;
+    appliesTo: "user" | "room";
+    frequency: "day" | "booking";
+    pricePerUnit: number;
+    quantity: number;
+  }>;
+  customItems?: Array<{ name: string; amount: number }>;
   advanceAmount?: number;
   status: string;
   createdAt: string;
@@ -27,6 +37,16 @@ export type CreateBookingPayload = {
   /** ISO date string (e.g. from `<input type="date">` or full ISO). */
   checkIn: string;
   checkOut: string;
+  numberOfGuests?: number;
+  selectedOptions?: Array<{
+    bookingOptionId: string;
+    name: string;
+    appliesTo: "user" | "room";
+    frequency: "day" | "booking";
+    pricePerUnit: number;
+    quantity: number;
+  }>;
+  customItems?: Array<{ name: string; amount: number }>;
   quantity?: number;
   roomNumbers?: string[];
   advanceAmount?: number;

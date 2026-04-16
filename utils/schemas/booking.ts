@@ -2,12 +2,15 @@ import { ObjectId } from "mongodb";
 
 import type {
   Booking,
+  BookingCustomItem,
   BookingRoomsMap,
+  BookingSelectedOption,
   BookingStatus,
   CreateBookingInput,
   CreateBookingRoomInput,
 } from "@/types/booking";
 import { BOOKING_STATUSES } from "@/types/booking";
+import { BOOKING_OPTION_APPLIES_TO, BOOKING_OPTION_FREQUENCY } from "@/types/booking-option";
 import type { Room } from "@/types/room";
 import { parseRoomId } from "@/utils/schemas/room";
 
@@ -54,6 +57,13 @@ function ensurePositiveInt(value: unknown, label: string): number {
   return n;
 }
 
+function ensureOptionalPositiveInt(value: unknown, label: string): number | undefined {
+  if (value == null || value === "") {
+    return undefined;
+  }
+  return ensurePositiveInt(value, label);
+}
+
 function ensureNonNegativeNumber(value: unknown, label: string): number | undefined {
   if (value == null || value === "") {
     return undefined;
@@ -76,6 +86,62 @@ function ensureStringArray(value: unknown, label: string): string[] | undefined 
     .map((v) => (typeof v === "string" ? v.trim() : ""))
     .filter(Boolean);
   return out.length ? out : undefined;
+}
+
+function parseSelectedOptionsInput(input: Record<string, unknown>): BookingSelectedOption[] | undefined {
+  const raw = input.selectedOptions;
+  if (raw == null) return undefined;
+  if (!Array.isArray(raw)) {
+    throw new Error("selectedOptions must be an array.");
+  }
+  const out = raw.map((entry, idx) => {
+    if (!entry || typeof entry !== "object") {
+      throw new Error(`selectedOptions.${idx} must be an object.`);
+    }
+    const row = entry as Record<string, unknown>;
+    const bookingOptionIdRaw = row.bookingOptionId;
+    if (typeof bookingOptionIdRaw !== "string" || !ObjectId.isValid(bookingOptionIdRaw)) {
+      throw new Error(`selectedOptions.${idx}.bookingOptionId must be a valid id.`);
+    }
+    const appliesTo = row.appliesTo;
+    if (typeof appliesTo !== "string" || !BOOKING_OPTION_APPLIES_TO.includes(appliesTo as never)) {
+      throw new Error(`selectedOptions.${idx}.appliesTo must be one of: ${BOOKING_OPTION_APPLIES_TO.join(", ")}.`);
+    }
+    const frequency = row.frequency;
+    if (typeof frequency !== "string" || !BOOKING_OPTION_FREQUENCY.includes(frequency as never)) {
+      throw new Error(
+        `selectedOptions.${idx}.frequency must be one of: ${BOOKING_OPTION_FREQUENCY.join(", ")}.`,
+      );
+    }
+    return {
+      bookingOptionId: new ObjectId(bookingOptionIdRaw),
+      name: ensureString(row.name, `selectedOptions.${idx}.name`),
+      appliesTo: appliesTo as (typeof BOOKING_OPTION_APPLIES_TO)[number],
+      frequency: frequency as (typeof BOOKING_OPTION_FREQUENCY)[number],
+      pricePerUnit: ensureNonNegativeNumber(row.pricePerUnit, `selectedOptions.${idx}.pricePerUnit`) ?? 0,
+      quantity: ensurePositiveInt(row.quantity, `selectedOptions.${idx}.quantity`),
+    } satisfies BookingSelectedOption;
+  });
+  return out.length > 0 ? out : undefined;
+}
+
+function parseCustomItemsInput(input: Record<string, unknown>): BookingCustomItem[] | undefined {
+  const raw = input.customItems;
+  if (raw == null) return undefined;
+  if (!Array.isArray(raw)) {
+    throw new Error("customItems must be an array.");
+  }
+  const out = raw.map((entry, idx) => {
+    if (!entry || typeof entry !== "object") {
+      throw new Error(`customItems.${idx} must be an object.`);
+    }
+    const row = entry as Record<string, unknown>;
+    return {
+      name: ensureString(row.name, `customItems.${idx}.name`),
+      amount: ensureNonNegativeNumber(row.amount, `customItems.${idx}.amount`) ?? 0,
+    } satisfies BookingCustomItem;
+  });
+  return out.length > 0 ? out : undefined;
 }
 
 function parseRoomsInput(input: Record<string, unknown>): CreateBookingRoomInput[] {
@@ -134,7 +200,10 @@ export function parseCreateBookingBody(payload: unknown, propertyId: ObjectId): 
     guestEmail: ensureOptionalString(input.guestEmail),
     checkIn,
     checkOut,
+    numberOfGuests: ensureOptionalPositiveInt(input.numberOfGuests, "numberOfGuests"),
     rooms: parseRoomsInput(input),
+    selectedOptions: parseSelectedOptionsInput(input),
+    customItems: parseCustomItemsInput(input),
     advanceAmount: ensureNonNegativeNumber(input.advanceAmount, "advanceAmount"),
     status: ensureBookingStatus(
       typeof input.status === "string" && input.status.trim() ? input.status : "pending",
@@ -173,6 +242,9 @@ export function createBookingDocument(
     guestEmail: input.guestEmail,
     checkIn: input.checkIn,
     checkOut: input.checkOut,
+    numberOfGuests: input.numberOfGuests,
+    selectedOptions: input.selectedOptions,
+    customItems: input.customItems,
     advanceAmount: input.advanceAmount,
     status: input.status,
     rooms,

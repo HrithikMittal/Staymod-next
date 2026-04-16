@@ -62,6 +62,12 @@ function serializeBooking(b: Booking) {
     guestEmail: b.guestEmail,
     checkIn: b.checkIn.toISOString(),
     checkOut: b.checkOut.toISOString(),
+    numberOfGuests: b.numberOfGuests,
+    selectedOptions: b.selectedOptions?.map((o) => ({
+      ...o,
+      bookingOptionId: o.bookingOptionId.toString(),
+    })),
+    customItems: b.customItems,
     advanceAmount: b.advanceAmount,
     status: b.status,
     rooms: normalizedRooms,
