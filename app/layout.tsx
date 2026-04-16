@@ -32,7 +32,11 @@ export default function RootLayout({
         className={`${inter.variable} ${mono.variable} h-full antialiased`}
       >
         <body className="h-[100dvh] min-h-full overflow-hidden flex flex-col bg-background text-foreground">
-        <ClerkProvider>
+        <ClerkProvider
+          taskUrls={{
+            "choose-organization": "/session-tasks/choose-organization",
+          }}
+        >
           <AppProviders>
             <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
           </AppProviders>

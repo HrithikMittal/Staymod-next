@@ -1,12 +1,40 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
 
 /** `/` only — not `/integration-guide`, `/sign-in`, etc. */
 const isPrivateHomeRoute = createRouteMatcher([/^\/$/]);
+
+/** Signed-in users without an org may visit these paths without being redirected to the org task page. */
+const isPublicWhenMissingOrg = createRouteMatcher([
+  "/sign-in(.*)",
+  "/sign-up(.*)",
+  "/integration-guide(.*)",
+  "/session-tasks/choose-organization(.*)",
+]);
 
 export default clerkMiddleware(async (auth, req) => {
   if (isPrivateHomeRoute(req)) {
     await auth.protect();
   }
+
+  const { userId, orgId } = await auth();
+
+  const pathname = req.nextUrl.pathname;
+  if (pathname.startsWith("/api")) {
+    return NextResponse.next();
+  }
+
+  if (!userId || orgId) {
+    return NextResponse.next();
+  }
+
+  if (isPublicWhenMissingOrg(req)) {
+    return NextResponse.next();
+  }
+
+  const url = req.nextUrl.clone();
+  url.pathname = "/session-tasks/choose-organization";
+  return NextResponse.redirect(url);
 });
 
 /**
