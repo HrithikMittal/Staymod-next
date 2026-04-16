@@ -461,7 +461,7 @@ function BookingForm({
   const estimatedAmount =
     form.status === "cancelled"
       ? 0
-      : roomTotalSingleGuest * guestMultiplier + extrasAmount;
+      : roomTotalSingleGuest + extrasAmount;
   const advanceAmount = Math.max(0, Number(form.advanceAmount) || 0);
   const remainingAmount = Math.max(0, estimatedAmount - advanceAmount);
   const roomBreakdown = roomSelections
@@ -471,7 +471,7 @@ function BookingForm({
       const subtotal = calculateBookingAmount(form.checkIn, form.checkOut, selection.quantity, {
         priceWeekday: room?.priceWeekday,
         priceWeekend: room?.priceWeekend,
-      }) * guestMultiplier;
+      });
       return {
         key: selection.roomId,
         label: room?.name ?? "Room",

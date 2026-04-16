@@ -13,11 +13,14 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { bookingIncludesUtcNight } from "@/utils/date-key";
+import { useApiQuery } from "@/hooks";
+import { bookingIncludesUtcNight, eachUtcNightDateKeysBetween } from "@/utils/date-key";
 import { calculateBookingAmount, calculateNightsCount } from "@/utils/booking-pricing";
+import type { AvailabilityUnitRow } from "@/components/global/group-availability-rows";
 import { CalendarIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { defaultNightlyPrice } from "@/utils/room-nightly-price";
 
 function formatSheetDate(dateKey: string): string {
   const d = new Date(`${dateKey}T00:00:00.000Z`);
@@ -39,6 +42,26 @@ function formatRange(checkIn: string, checkOut: string) {
 
 function formatMoney(value: number | undefined): string {
   return `Rs. ${(value ?? 0).toLocaleString()}`;
+}
+
+function formatDateKeyForNight(dateKey: string): string {
+  const d = new Date(`${dateKey}T00:00:00.000Z`);
+  return d.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+function isoDateOnly(iso: string): string {
+  return iso.slice(0, 10);
+}
+
+function subtractOneDayDateKey(dateKey: string): string {
+  const d = new Date(`${dateKey}T00:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
 }
 
 function statusClass(status: string) {
@@ -162,6 +185,54 @@ export function DateBookingsSheet({
   const title = dateKey ? formatSheetDate(dateKey) : "";
   const filterRoomName = roomIdFilter != null ? (roomById.get(roomIdFilter)?.name ?? "Selected room") : null;
 
+  const expandedBooking = useMemo(() => {
+    if (!expandedBookingId) return null;
+    return sorted.find((b) => b._id === expandedBookingId) ?? null;
+  }, [expandedBookingId, sorted]);
+
+  type RoomAvailabilityPricingResponse = {
+    from: string;
+    to: string;
+    days: { dateKey: string; isWeekend: boolean }[];
+    rows: AvailabilityUnitRow[];
+  };
+
+  const expandedFromDateKey = expandedBooking ? isoDateOnly(expandedBooking.checkIn) : null;
+  const expandedNightsCount = expandedBooking
+    ? calculateNightsCount(expandedBooking.checkIn, expandedBooking.checkOut)
+    : 0;
+  const expandedToDateKey =
+    expandedBooking && expandedNightsCount > 0 ? subtractOneDayDateKey(isoDateOnly(expandedBooking.checkOut)) : null;
+
+  const expandedRoomAvailabilityPricingPath =
+    expandedFromDateKey && expandedToDateKey
+      ? `/api/properties/${propertyId}/room-availability?from=${expandedFromDateKey}&to=${expandedToDateKey}`
+      : "";
+
+  const expandedRoomAvailabilityPricingQuery = useApiQuery<RoomAvailabilityPricingResponse>(
+    ["room-availability-pricing", propertyId, expandedFromDateKey, expandedToDateKey],
+    expandedRoomAvailabilityPricingPath,
+    undefined,
+    { enabled: Boolean(open && expandedFromDateKey && expandedToDateKey && expandedRoomAvailabilityPricingPath) },
+  );
+
+  const nightlyPriceByRoomAndDateKey = useMemo(() => {
+    const data = expandedRoomAvailabilityPricingQuery.data;
+    if (!data) return null;
+    const map = new Map<string, Map<string, number>>();
+    for (const row of data.rows) {
+      let inner = map.get(row.roomId);
+      if (!inner) {
+        inner = new Map<string, number>();
+        map.set(row.roomId, inner);
+      }
+      for (const cell of row.cells) {
+        if (cell.price != null) inner.set(cell.dateKey, cell.price);
+      }
+    }
+    return map;
+  }, [expandedRoomAvailabilityPricingQuery.data]);
+
   const cancelMutation = useMutation({
     mutationFn: async (booking: BookingListItem) =>
       updateBooking(propertyId, booking._id, payloadFromBooking(booking)),
@@ -220,10 +291,12 @@ export function DateBookingsSheet({
               {sorted.map((booking) => {
                 const summary = roomSummaryForBooking(booking, roomById);
                 const statusLabel = booking.status.replace(/_/g, " ");
-                const nights = Math.max(1, calculateNightsCount(booking.checkIn, booking.checkOut));
+                const nightsCount = calculateNightsCount(booking.checkIn, booking.checkOut);
+                const nights = Math.max(1, nightsCount);
                 const guests = Math.max(1, booking.numberOfGuests ?? 1);
                 const roomUnits = bookingRoomUnits(booking);
-                const roomSubtotalSingleGuest = Object.entries(booking.rooms).reduce((sum, [roomId, row]) => {
+
+                const roomSubtotalSingleGuestFallback = Object.entries(booking.rooms).reduce((sum, [roomId, row]) => {
                   const room = roomById.get(roomId);
                   return (
                     sum +
@@ -233,14 +306,42 @@ export function DateBookingsSheet({
                     })
                   );
                 }, 0);
-                const roomTotal = roomSubtotalSingleGuest * guests;
-                const roomAmountPerDay = nights > 0 ? roomTotal / nights : roomTotal;
+
+                const roomTotalFallback = roomSubtotalSingleGuestFallback;
+                const nightDateKeys = eachUtcNightDateKeysBetween(new Date(booking.checkIn), new Date(booking.checkOut));
+                const roomNightlyTotalsFallback = nightDateKeys.map((dateKey) => {
+                  return Object.entries(booking.rooms).reduce((sum, [roomId, row]) => {
+                    const room = roomById.get(roomId);
+                    const unitQty = Math.max(1, row.quantity || 1);
+                    const base = room ? defaultNightlyPrice(room, dateKey) : null;
+                    return sum + (base ?? 0) * unitQty;
+                  }, 0);
+                });
+
                 const optionsTotal = (booking.selectedOptions ?? []).reduce(
                   (sum, opt) => sum + opt.pricePerUnit * opt.quantity * (opt.frequency === "day" ? nights : 1),
                   0,
                 );
                 const customTotal = (booking.customItems ?? []).reduce((sum, item) => sum + item.amount, 0);
-                const totalAmount = roomTotal + optionsTotal + customTotal;
+
+                let roomTotal = roomTotalFallback;
+                let roomNightlyTotals = roomNightlyTotalsFallback;
+                let totalAmount = roomTotalFallback + optionsTotal + customTotal;
+
+                if (expandedBookingId === booking._id && nightlyPriceByRoomAndDateKey) {
+                  roomNightlyTotals = nightDateKeys.map((dateKey) => {
+                    return Object.entries(booking.rooms).reduce((sum, [roomId, row]) => {
+                      const room = roomById.get(roomId);
+                      const unitQty = Math.max(1, row.quantity || 1);
+                      const overridden = nightlyPriceByRoomAndDateKey.get(roomId)?.get(dateKey);
+                      const base = room ? defaultNightlyPrice(room, dateKey) : null;
+                      return sum + (overridden ?? base ?? 0) * unitQty;
+                    }, 0);
+                  });
+
+                  roomTotal = roomNightlyTotals.reduce((sum, v) => sum + v, 0);
+                  totalAmount = roomTotal + optionsTotal + customTotal;
+                }
                 return (
                   <li
                     key={booking._id}
@@ -337,12 +438,16 @@ export function DateBookingsSheet({
                                 <td className="py-0.5 text-muted-foreground">Room amount</td>
                                 <td className="py-0.5 text-right font-medium">{formatMoney(roomTotal)}</td>
                               </tr>
-                              <tr>
-                                <td className="py-0.5 text-muted-foreground">Room amount / day</td>
-                                <td className="py-0.5 text-right font-medium">
-                                  {formatMoney(Math.round(roomAmountPerDay))}
-                                </td>
-                              </tr>
+                              {nightDateKeys.length > 0
+                                ? nightDateKeys.map((dateKey, idx) => (
+                                    <tr key={dateKey}>
+                                      <td className="py-0.5 text-muted-foreground">{formatDateKeyForNight(dateKey)}</td>
+                                      <td className="py-0.5 text-right font-medium">
+                                        {formatMoney(roomNightlyTotals[idx] ?? 0)}
+                                      </td>
+                                    </tr>
+                                  ))
+                                : null}
                               <tr>
                                 <td className="py-0.5 text-muted-foreground">Options + extras</td>
                                 <td className="py-0.5 text-right font-medium">
