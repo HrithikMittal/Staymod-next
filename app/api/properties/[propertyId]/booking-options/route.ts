@@ -1,23 +1,43 @@
 import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 
+import type { BookingOption } from "@/types/booking-option";
+import { BOOKING_OPTIONS_COLLECTION } from "@/types/booking-option";
 import type { Property } from "@/types/property";
-import type { Room } from "@/types/room";
 import { getActiveOrganizationId } from "@/utils/auth-org";
 import { getDb } from "@/utils/mongodb";
 import {
-  createRoomDocument,
-  parseCreateRoomInput,
+  createBookingOptionDocument,
+  parseCreateBookingOptionInput,
   parsePropertyId,
-} from "@/utils/schemas/room";
-import { serializeRoomForApi } from "@/utils/serialize-room-api";
+} from "@/utils/schemas";
 
 const PROPERTIES_COLLECTION = "properties";
-const ROOMS_COLLECTION = "rooms";
 
 type RouteContext = {
   params: Promise<{ propertyId: string }>;
 };
+
+function serializeBookingOption(option: BookingOption) {
+  const legacyChargeBasis = (option as BookingOption & { chargeBasis?: string }).chargeBasis;
+  const appliesTo =
+    option.appliesTo ?? (legacyChargeBasis === "per_room_per_day" ? "room" : "user");
+  const frequency = option.frequency === "booking" ? "booking" : "day";
+  return {
+    _id: option._id.toString(),
+    orgId: option.orgId,
+    propertyId: option.propertyId.toString(),
+    name: option.name,
+    description: option.description,
+    appliesTo,
+    frequency,
+    pricePerUnit: option.pricePerUnit,
+    isActive: option.isActive,
+    sortOrder: option.sortOrder,
+    createdAt: option.createdAt.toISOString(),
+    updatedAt: option.updatedAt.toISOString(),
+  };
+}
 
 async function resolvePropertyOr404(orgId: string, propertyIdParam: string) {
   let propertyObjectId: ObjectId;
@@ -52,16 +72,13 @@ export async function GET(_req: Request, context: RouteContext) {
   }
 
   const { db, propertyObjectId } = resolved;
-
-  const rooms = await db
-    .collection<Room>(ROOMS_COLLECTION)
+  const options = await db
+    .collection<BookingOption>(BOOKING_OPTIONS_COLLECTION)
     .find({ orgId, propertyId: propertyObjectId })
-    .sort({ sortOrder: 1, name: 1 })
+    .sort({ sortOrder: 1, name: 1, createdAt: 1 })
     .toArray();
 
-  return NextResponse.json({
-    rooms: rooms.map((r) => serializeRoomForApi(r)),
-  });
+  return NextResponse.json({ bookingOptions: options.map((option) => serializeBookingOption(option)) });
 }
 
 export async function POST(req: Request, context: RouteContext) {
@@ -80,37 +97,30 @@ export async function POST(req: Request, context: RouteContext) {
 
   try {
     const payload = await req.json();
-    const input = parseCreateRoomInput(payload);
+    const input = parseCreateBookingOptionInput(payload);
 
-    const duplicate = await db.collection<Room>(ROOMS_COLLECTION).findOne({
+    const duplicate = await db.collection<BookingOption>(BOOKING_OPTIONS_COLLECTION).findOne({
       orgId,
       propertyId: propertyObjectId,
-      slug: input.slug,
+      name: input.name,
     });
-
     if (duplicate) {
       return NextResponse.json(
-        { error: "Room slug already exists for this property." },
+        { error: "A booking option with this name already exists for this property." },
         { status: 409 },
       );
     }
 
-    const room = createRoomDocument(input, orgId, propertyObjectId);
-    const insertResult = await db.collection<Omit<Room, "_id">>(ROOMS_COLLECTION).insertOne(room);
+    const doc = createBookingOptionDocument(input, orgId, propertyObjectId);
+    const result = await db
+      .collection<Omit<BookingOption, "_id">>(BOOKING_OPTIONS_COLLECTION)
+      .insertOne(doc);
+    const created: BookingOption = { ...doc, _id: result.insertedId };
 
-    const created = { ...room, _id: insertResult.insertedId };
-
-    return NextResponse.json(
-      {
-        room: serializeRoomForApi(created),
-      },
-      { status: 201 },
-    );
+    return NextResponse.json({ bookingOption: serializeBookingOption(created) }, { status: 201 });
   } catch (error) {
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Failed to create room.",
-      },
+      { error: error instanceof Error ? error.message : "Failed to create booking option." },
       { status: 400 },
     );
   }

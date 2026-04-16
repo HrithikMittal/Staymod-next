@@ -30,3 +30,13 @@ export function eachUtcNightDateKeysBetween(checkIn: Date, checkOut: Date): stri
   }
   return keys;
 }
+
+/** True if `dateKey` is one of the booked nights in `[checkIn, checkOut)` (UTC). */
+export function bookingIncludesUtcNight(
+  checkInIso: string,
+  checkOutIso: string,
+  dateKey: string,
+): boolean {
+  const nights = eachUtcNightDateKeysBetween(new Date(checkInIso), new Date(checkOutIso));
+  return nights.includes(dateKey);
+}

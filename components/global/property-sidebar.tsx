@@ -4,6 +4,7 @@ import {
   BedDoubleIcon,
   CalendarRangeIcon,
   ClipboardListIcon,
+  HandCoinsIcon,
   LayoutDashboardIcon,
   PlugZapIcon,
   PanelLeftCloseIcon,
@@ -44,6 +45,12 @@ function navItems(propertyId: string) {
       label: "Bookings",
       icon: ClipboardListIcon,
       match: (pathname: string) => pathname.startsWith(`/${propertyId}/bookings`),
+    },
+    {
+      href: `/${propertyId}/booking-options`,
+      label: "Booking options",
+      icon: HandCoinsIcon,
+      match: (pathname: string) => pathname.startsWith(`/${propertyId}/booking-options`),
     },
     {
       href: `/${propertyId}/integrations`,

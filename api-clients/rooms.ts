@@ -84,6 +84,17 @@ export function updateRoom(propertyId: string, roomId: string, payload: CreateRo
   });
 }
 
+export function updateRoomDailyPrice(
+  propertyId: string,
+  roomId: string,
+  payload: { dateKey: string; price: number | null },
+) {
+  return apiFetch<{ room: RoomListItem }>(`/api/properties/${propertyId}/rooms/${roomId}/daily-price`, {
+    method: "PATCH",
+    json: payload,
+  });
+}
+
 export function deleteRoom(propertyId: string, roomId: string) {
   return apiFetch<{ deleted: boolean }>(`/api/properties/${propertyId}/rooms/${roomId}`, {
     method: "DELETE",

@@ -25,3 +25,10 @@ export {
   ensureDateKey,
   ensureRoomTypeForAvailability,
 } from "./room-availability";
+
+/** Booking option create/parse helpers (extra chargeable services). */
+export {
+  createBookingOptionDocument,
+  parseBookingOptionId,
+  parseCreateBookingOptionInput,
+} from "./booking-option";

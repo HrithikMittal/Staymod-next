@@ -68,6 +68,7 @@ type CreateBookingDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   booking?: BookingListItem | null;
+  initialFormOverride?: Partial<CreateBookingPayload> | null;
 };
 
 export function CreateBookingDialog({
@@ -78,6 +79,7 @@ export function CreateBookingDialog({
   open,
   onOpenChange,
   booking = null,
+  initialFormOverride = null,
 }: CreateBookingDialogProps) {
   const isEdit = Boolean(booking);
   /** Remount edit form when booking data changes; create form mounts once rooms are ready. */
@@ -115,13 +117,21 @@ export function CreateBookingDialog({
         ) : null}
         {open && canShowForm ? (
           <BookingForm
-            key={booking ? `${booking._id}-${booking.updatedAt}` : `new-${roomsKey}`}
+            key={
+              booking
+                ? `${booking._id}-${booking.updatedAt}`
+                : `new-${roomsKey}-${JSON.stringify(initialFormOverride ?? {})}`
+            }
             propertyId={propertyId}
             rooms={rooms}
             existingBookings={existingBookings}
             booking={booking}
             onClose={() => handleOpenChange(false)}
-            initialForm={booking ? initialFormFromBooking(booking) : initialFormForCreate(rooms)}
+            initialForm={
+              booking
+                ? initialFormFromBooking(booking)
+                : { ...initialFormForCreate(rooms), ...(initialFormOverride ?? {}) }
+            }
           />
         ) : null}
       </DialogContent>

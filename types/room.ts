@@ -68,6 +68,11 @@ export type Room = OrganizationScope & {
   priceWeekday?: number;
   /** Standard nightly rate — weekend (Fri–Sun or property-defined). */
   priceWeekend?: number;
+  /**
+   * @deprecated Legacy per-night map on the room document. New data uses `nightly_pricing` collection.
+   * Still read for backward compatibility until migrated.
+   */
+  dailyPriceOverrides?: Record<string, number>;
   /** Feature tags, e.g. Wi‑Fi, balcony. */
   amenities: string[];
   isActive: boolean;

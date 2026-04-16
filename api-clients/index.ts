@@ -24,3 +24,12 @@ export {
   type CreateBookingPayload,
   type ListBookingsResponse,
 } from "./bookings";
+export {
+  createBookingOption,
+  deleteBookingOption,
+  fetchBookingOptions,
+  updateBookingOption,
+  type BookingOptionItem,
+  type ListBookingOptionsResponse,
+  type UpsertBookingOptionPayload,
+} from "./booking-options";

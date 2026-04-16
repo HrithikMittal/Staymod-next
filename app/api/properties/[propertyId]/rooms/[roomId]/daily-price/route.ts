@@ -2,10 +2,13 @@ import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 
 import type { Property } from "@/types/property";
+import type { NightlyPricing } from "@/types/nightly-pricing";
+import { NIGHTLY_PRICING_COLLECTION } from "@/types/nightly-pricing";
 import type { Room } from "@/types/room";
 import { getActiveOrganizationId } from "@/utils/auth-org";
+import { isValidDateKey } from "@/utils/date-key";
 import { getDb } from "@/utils/mongodb";
-import { parseCreateRoomInput, parsePropertyId, parseRoomId } from "@/utils/schemas/room";
+import { parsePropertyId, parseRoomId } from "@/utils/schemas/room";
 import { serializeRoomForApi } from "@/utils/serialize-room-api";
 
 const PROPERTIES_COLLECTION = "properties";
@@ -48,6 +51,10 @@ async function resolveContextOrError(orgId: string, propertyIdParam: string, roo
   return { db, propertyObjectId, roomObjectId, room };
 }
 
+/**
+ * Set or clear a per-night price override for one calendar night (UTC date key).
+ * Body: `{ dateKey: "YYYY-MM-DD", price: number | null }` — `null` removes the override.
+ */
 export async function PATCH(req: Request, context: RouteContext) {
   const orgId = await getActiveOrganizationId();
   if (!orgId) {
@@ -62,74 +69,68 @@ export async function PATCH(req: Request, context: RouteContext) {
 
   const { db, propertyObjectId, roomObjectId } = resolved;
 
+  let payload: unknown;
   try {
-    const payload = await req.json();
-    const input = parseCreateRoomInput(payload);
+    payload = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+  }
 
-    const duplicate = await db.collection<Room>(ROOMS_COLLECTION).findOne({
-      orgId,
-      propertyId: propertyObjectId,
-      slug: input.slug,
-      _id: { $ne: roomObjectId },
-    });
+  if (!payload || typeof payload !== "object") {
+    return NextResponse.json({ error: "Invalid payload." }, { status: 400 });
+  }
 
-    if (duplicate) {
-      return NextResponse.json(
-        { error: "Room slug already exists for this property." },
-        { status: 409 },
-      );
-    }
+  const body = payload as Record<string, unknown>;
+  const dateKey = typeof body.dateKey === "string" ? body.dateKey.trim() : "";
+  if (!isValidDateKey(dateKey)) {
+    return NextResponse.json({ error: "dateKey must be YYYY-MM-DD." }, { status: 400 });
+  }
 
-    const now = new Date();
+  const priceRaw = body.price;
+  const now = new Date();
+
+  const pricingFilter = {
+    orgId,
+    propertyId: propertyObjectId,
+    roomId: roomObjectId,
+    dateKey,
+  };
+
+  if (priceRaw === null || priceRaw === undefined || priceRaw === "") {
+    await db.collection<NightlyPricing>(NIGHTLY_PRICING_COLLECTION).deleteOne(pricingFilter);
     await db.collection<Room>(ROOMS_COLLECTION).updateOne(
       { _id: roomObjectId },
       {
-        $set: {
-          ...input,
-          updatedAt: now,
-        },
+        $unset: { [`dailyPriceOverrides.${dateKey}`]: "" },
+        $set: { updatedAt: now },
       },
     );
-
-    const updated = await db.collection<Room>(ROOMS_COLLECTION).findOne({ _id: roomObjectId });
-    if (!updated) {
-      return NextResponse.json({ error: "Room not found." }, { status: 404 });
+  } else {
+    const n = typeof priceRaw === "number" ? priceRaw : Number(priceRaw);
+    if (!Number.isFinite(n) || n < 0) {
+      return NextResponse.json({ error: "price must be a non-negative number or null." }, { status: 400 });
     }
-
-    return NextResponse.json({ room: serializeRoomForApi(updated) });
-  } catch (error) {
-    return NextResponse.json(
+    await db.collection<NightlyPricing>(NIGHTLY_PRICING_COLLECTION).updateOne(
+      pricingFilter,
       {
-        error: error instanceof Error ? error.message : "Failed to update room.",
+        $set: { amount: n, updatedAt: now },
+        $setOnInsert: { createdAt: now },
       },
-      { status: 400 },
+      { upsert: true },
+    );
+    await db.collection<Room>(ROOMS_COLLECTION).updateOne(
+      { _id: roomObjectId },
+      {
+        $unset: { [`dailyPriceOverrides.${dateKey}`]: "" },
+        $set: { updatedAt: now },
+      },
     );
   }
-}
 
-export async function DELETE(_req: Request, context: RouteContext) {
-  const orgId = await getActiveOrganizationId();
-  if (!orgId) {
-    return NextResponse.json({ error: "Organization is required." }, { status: 401 });
-  }
-
-  const { propertyId, roomId } = await context.params;
-  const resolved = await resolveContextOrError(orgId, propertyId, roomId);
-  if ("error" in resolved) {
-    return resolved.error;
-  }
-
-  const { db, roomObjectId, propertyObjectId } = resolved;
-
-  const result = await db.collection<Room>(ROOMS_COLLECTION).deleteOne({
-    _id: roomObjectId,
-    orgId,
-    propertyId: propertyObjectId,
-  });
-
-  if (result.deletedCount === 0) {
+  const updated = await db.collection<Room>(ROOMS_COLLECTION).findOne({ _id: roomObjectId });
+  if (!updated) {
     return NextResponse.json({ error: "Room not found." }, { status: 404 });
   }
 
-  return NextResponse.json({ deleted: true });
+  return NextResponse.json({ room: serializeRoomForApi(updated) });
 }
