@@ -1,5 +1,5 @@
 /**
- * Clerk runs from the root `middleware.ts` (Next.js convention). Add shared helpers here
- * (for example `createRouteMatcher` predicates) as the app grows.
+ * Clerk runs from the root `proxy.ts` (Next.js 16 convention; older `middleware.ts` is deprecated).
+ * Add shared helpers here (for example `createRouteMatcher` predicates) as the app grows.
  */
-export const clerkMiddlewareEntry = "middleware.ts";
+export const clerkMiddlewareEntry = "proxy.ts";

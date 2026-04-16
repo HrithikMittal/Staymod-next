@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import type { Property } from "@/types/property";
-import { getActiveOrganizationId } from "@/utils/auth-org";
+import { requireActiveOrganization } from "@/utils/auth-org";
 import { getDb } from "@/utils/mongodb";
 import {
   createPropertyDocument,
@@ -11,10 +11,9 @@ import {
 const PROPERTIES_COLLECTION = "properties";
 
 export async function GET() {
-  const orgId = await getActiveOrganizationId();
-  if (!orgId) {
-    return NextResponse.json({ error: "Organization is required." }, { status: 401 });
-  }
+  const org = await requireActiveOrganization();
+  if (!org.ok) return org.response;
+  const { orgId } = org;
 
   const db = await getDb();
   const properties = await db
@@ -27,10 +26,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const orgId = await getActiveOrganizationId();
-  if (!orgId) {
-    return NextResponse.json({ error: "Organization is required." }, { status: 401 });
-  }
+  const org = await requireActiveOrganization();
+  if (!org.ok) return org.response;
+  const { orgId } = org;
 
   try {
     const payload = await req.json();

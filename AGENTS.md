@@ -18,7 +18,7 @@ Follow these conventions so the codebase stays consistent for humans and AI assi
 | Hooks | `hooks/` | Client hooks; TanStack Query wrappers (`useApiQuery`, `useApiMutation`). |
 | API surface (typed clients) | `api-clients/` | Functions that call backend routes or external HTTP APIs via `apiFetch` — **not** raw `fetch` scattered in components. |
 | Utilities | `utils/` | Shared helpers: `api-fetch.ts`, `mongodb.ts`, server-only auth helpers. |
-| Middleware helpers | `middlewares/` | Logic used with Clerk / Next middleware (the **default export** for middleware must stay in root `middleware.ts`). |
+| Middleware helpers | `middlewares/` | Logic used with Clerk / Next middleware (the **default export** for the edge entry must stay in root `proxy.ts` on Next.js 16). |
 | Types | `types/` | Shared TypeScript types (e.g. organization scoping). |
 | shadcn `cn()` helper | `lib/utils.ts` | Required by shadcn components (`cn` from `class-variance-authority` + `tailwind-merge`). |
 

@@ -11,7 +11,28 @@ import { PropertiesEmptyState } from "@/components/global/properties/properties-
 import { PropertyListRow } from "@/components/global/properties/property-list-row";
 import { Button } from "@/components/ui/button";
 import { useApiQuery } from "@/hooks";
+import { ApiError } from "@/utils/api-fetch";
 import { readLastPropertyId } from "@/utils/last-property-id";
+
+function propertiesListErrorMessage(error: Error): string {
+  if (error instanceof ApiError) {
+    try {
+      const parsed = JSON.parse(error.body) as { error?: string };
+      if (typeof parsed.error === "string" && parsed.error.trim()) {
+        return parsed.error;
+      }
+    } catch {
+      // ignore
+    }
+    if (error.status === 403) {
+      return "Select an organization in the header to load properties.";
+    }
+    if (error.status === 401) {
+      return "Sign in to load properties.";
+    }
+  }
+  return error.message;
+}
 
 function PropertiesListSkeleton() {
   return (
@@ -75,7 +96,9 @@ export function PropertiesHome() {
           {propertiesQuery.isLoading ? (
             <PropertiesListSkeleton />
           ) : propertiesQuery.isError ? (
-            <p className="px-5 py-10 text-sm text-destructive">{propertiesQuery.error.message}</p>
+            <p className="px-5 py-10 text-sm text-destructive">
+              {propertiesListErrorMessage(propertiesQuery.error)}
+            </p>
           ) : count === 0 ? (
             <PropertiesEmptyState onAdd={() => setCreateOpen(true)} />
           ) : (
