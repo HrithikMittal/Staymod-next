@@ -118,3 +118,14 @@
     transform: translateX(0);
   }
 }
+
+/* Clerk OrganizationProfile on /[id]/team: drop default card elevation */
+.organization-team-clerk-root {
+  --clerk-color-shadow: transparent;
+}
+.organization-team-clerk-root .cl-rootBox {
+  box-shadow: none;
+}
+.organization-team-clerk-root .cl-card {
+  box-shadow: none;
+}

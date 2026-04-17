@@ -8,6 +8,7 @@ import {
   LayoutDashboardIcon,
   PlugZapIcon,
   TagsIcon,
+  UsersIcon,
   PanelLeftCloseIcon,
   PanelLeftIcon,
 } from "lucide-react";
@@ -58,6 +59,12 @@ function navItems(propertyId: string) {
       label: "Room tags",
       icon: TagsIcon,
       match: (pathname: string) => pathname.startsWith(`/${propertyId}/room-tags`),
+    },
+    {
+      href: `/${propertyId}/team/organization-members`,
+      label: "Team",
+      icon: UsersIcon,
+      match: (pathname: string) => pathname.startsWith(`/${propertyId}/team`),
     },
     {
       href: `/${propertyId}/integrations`,
