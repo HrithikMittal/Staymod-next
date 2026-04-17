@@ -84,7 +84,8 @@ export function IntegrationGuidePage({ publicApiBaseUrl }: IntegrationGuidePageP
     "numberOfGuests": 2,
     "rooms": [
       { "roomId": "ROOM_OBJECT_ID", "quantity": 1 }
-    ]
+    ],
+    "status": "pending"
   }' \\
   "${baseUrl}/properties/YOUR_PROPERTY_ID/bookings"`;
 
@@ -167,7 +168,7 @@ export function IntegrationGuidePage({ publicApiBaseUrl }: IntegrationGuidePageP
 
           <GuideSection
             title="POST — Create booking"
-            description="Scope: bookings:write. Body matches internal booking creation: guest fields, ISO checkIn/checkOut, and a rooms array with roomId (MongoDB id string) and quantity. Optional roomNumbers must match configured numbers on that room."
+            description="Scope: bookings:write. Guest fields, ISO checkIn/checkOut, and rooms (array items: roomId, quantity, optional roomNumbers). Optional: status — pending, confirmed, cancelled, or no_show (default pending). Optional advanceAmount, selectedOptions, customItems."
           >
             <CodeSample title="Example" code={createBookingExample} />
           </GuideSection>
