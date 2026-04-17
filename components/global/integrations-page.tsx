@@ -16,6 +16,13 @@ type IntegrationsPageProps = {
   propertyId: string;
 };
 
+const SCOPE_OPTIONS = [
+  { scope: "rooms:read", hint: "List rooms for this property." },
+  { scope: "availability:read", hint: "Room availability and nightly prices." },
+  { scope: "bookings:read", hint: "GET bookings filtered by guest email (public API)." },
+  { scope: "bookings:write", hint: "Create bookings (public API)." },
+] as const;
+
 function SectionCard({
   title,
   description,
@@ -127,12 +134,16 @@ export function IntegrationsPage({ propertyId }: IntegrationsPageProps) {
           </div>
           <div className="space-y-1.5">
             <Label>Scopes</Label>
-            <div className="flex flex-wrap gap-2">
-              {["rooms:read", "availability:read", "bookings:write"].map((scope) => {
+            <div className="flex flex-col gap-2">
+              {SCOPE_OPTIONS.map(({ scope, hint }) => {
                 const checked = selectedScopes.includes(scope);
                 return (
-                  <label key={scope} className="inline-flex items-center gap-2 rounded border px-2 py-1 text-xs">
+                  <label
+                    key={scope}
+                    className="flex cursor-pointer items-start gap-2 rounded-md border border-border/70 px-3 py-2 text-xs"
+                  >
                     <Checkbox
+                      className="mt-0.5"
                       checked={checked}
                       onCheckedChange={(next) =>
                         setSelectedScopes((prev) =>
@@ -140,7 +151,10 @@ export function IntegrationsPage({ propertyId }: IntegrationsPageProps) {
                         )
                       }
                     />
-                    {scope}
+                    <span className="min-w-0 leading-snug">
+                      <span className="font-mono text-[0.8rem] text-foreground">{scope}</span>
+                      <span className="mt-0.5 block text-muted-foreground">{hint}</span>
+                    </span>
                   </label>
                 );
               })}

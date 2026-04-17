@@ -4,7 +4,13 @@ import type { OrganizationScope } from "@/types/organization";
 
 export const API_KEYS_COLLECTION = "api_keys" as const;
 
-export const API_KEY_SCOPES = ["*", "rooms:read", "availability:read", "bookings:write"] as const;
+export const API_KEY_SCOPES = [
+  "*",
+  "rooms:read",
+  "availability:read",
+  "bookings:read",
+  "bookings:write",
+] as const;
 export type ApiKeyScope = (typeof API_KEY_SCOPES)[number];
 
 export type ApiKey = OrganizationScope & {

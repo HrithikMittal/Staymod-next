@@ -23,6 +23,47 @@ export async function OPTIONS(req: Request) {
   return publicApiOptionsResponse(req);
 }
 
+export async function GET(req: Request, context: RouteContext) {
+  let propertyObjectId: ObjectId;
+  try {
+    const { propertyId } = await context.params;
+    propertyObjectId = parsePropertyId(propertyId);
+  } catch {
+    return publicApiJsonResponse(req, { error: "Invalid property id." }, { status: 400 });
+  }
+
+  const auth = await requirePublicApiAuth(req, "bookings:read", propertyObjectId);
+  if (!auth.ok) return auth.response;
+  const { orgId } = auth.value;
+
+  const guestEmail = new URL(req.url).searchParams.get("guestEmail")?.trim() ?? "";
+  if (!guestEmail) {
+    return publicApiJsonResponse(
+      req,
+      { error: "Query parameter guestEmail is required." },
+      { status: 400 },
+    );
+  }
+
+  const db = await getDb();
+  const emailMatch = new RegExp(`^${escapeRegex(guestEmail)}$`, "i");
+  const bookings = await db
+    .collection<Booking>(BOOKINGS_COLLECTION)
+    .find({
+      orgId,
+      propertyId: propertyObjectId,
+      guestEmail: emailMatch,
+    })
+    .sort({ checkIn: -1, createdAt: -1 })
+    .toArray();
+
+  return publicApiJsonResponse(req, { bookings: bookings.map(serializeBooking) });
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function serializeBooking(b: Booking) {
   return {
     _id: b._id.toString(),
