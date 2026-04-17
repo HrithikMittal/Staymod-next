@@ -150,10 +150,33 @@ function parseRoomsInput(input: Record<string, unknown>): CreateBookingRoomInput
   if (rawRooms == null) {
     throw new Error("rooms is required.");
   }
-  if (typeof rawRooms !== "object" || Array.isArray(rawRooms)) {
-    throw new Error("rooms must be an object map keyed by room id.");
+  if (typeof rawRooms !== "object") {
+    throw new Error("rooms must be an object or an array.");
   }
 
+  /** Array form: `[{ "roomId": "...", "quantity": 2, "roomNumbers": ["101"] }]` (common for public APIs). */
+  if (Array.isArray(rawRooms)) {
+    if (rawRooms.length === 0) {
+      throw new Error("rooms must include at least one room.");
+    }
+    return rawRooms.map((entry, idx) => {
+      if (!entry || typeof entry !== "object") {
+        throw new Error(`rooms.${idx} must be an object.`);
+      }
+      const row = entry as Record<string, unknown>;
+      const roomIdRaw = row.roomId;
+      if (typeof roomIdRaw !== "string" || !ObjectId.isValid(roomIdRaw)) {
+        throw new Error(`rooms.${idx}.roomId must be a valid id.`);
+      }
+      return {
+        roomId: parseRoomId(roomIdRaw),
+        quantity: ensurePositiveInt(row.quantity, `rooms.${idx}.quantity`),
+        roomNumbers: ensureStringArray(row.roomNumbers, `rooms.${idx}.roomNumbers`),
+      } satisfies CreateBookingRoomInput;
+    });
+  }
+
+  /** Map form: `{ "roomIdHex": { "quantity": 2 } }` (internal / legacy). */
   const entries = Object.entries(rawRooms as Record<string, unknown>);
   if (entries.length === 0) {
     throw new Error("rooms must include at least one room.");
