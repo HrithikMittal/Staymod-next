@@ -33,6 +33,7 @@ function ScopeTable() {
     { scope: "*", note: "All public endpoints below." },
     { scope: "rooms:read", note: "List rooms for a property." },
     { scope: "availability:read", note: "Room availability and nightly prices." },
+    { scope: "booking-options:read", note: "List active booking options for a property." },
     {
       scope: "bookings:read",
       note: "List bookings by guest email (guestEmail query) or get one booking by id (path).",
@@ -72,6 +73,10 @@ export function IntegrationGuidePage({ publicApiBaseUrl }: IntegrationGuidePageP
   const listRoomsExample = `curl -s \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   "${baseUrl}/properties/YOUR_PROPERTY_ID/rooms"`;
+
+  const listBookingOptionsExample = `curl -s \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  "${baseUrl}/properties/YOUR_PROPERTY_ID/booking-options"`;
 
   const availabilityExample = `curl -s \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
@@ -115,10 +120,9 @@ export function IntegrationGuidePage({ publicApiBaseUrl }: IntegrationGuidePageP
               </div>
               <h1 className="text-3xl font-semibold tracking-tight">Public API integration</h1>
               <p className="max-w-2xl text-sm text-muted-foreground">
-                Use versioned HTTP endpoints to list rooms, read availability with nightly pricing, create bookings,
-                and look up bookings by guest email or booking id from your website. Authenticate with an API key you
-                create under
-                each property&apos;s{" "}
+                Use versioned HTTP endpoints to list rooms and booking options, read availability with nightly pricing,
+                create bookings, and look up bookings by guest email or booking id from your website. Authenticate with
+                an API key you create under each property&apos;s{" "}
                 <span className="text-foreground/90">Integrations</span> page.
               </p>
             </div>
@@ -171,6 +175,13 @@ export function IntegrationGuidePage({ publicApiBaseUrl }: IntegrationGuidePageP
             description="Scope: rooms:read. Returns active rooms with serialized tags and images."
           >
             <CodeSample title="Example" code={listRoomsExample} />
+          </GuideSection>
+
+          <GuideSection
+            title="GET — Booking options"
+            description="Scope: booking-options:read. Returns active booking options for this property."
+          >
+            <CodeSample title="Example" code={listBookingOptionsExample} />
           </GuideSection>
 
           <GuideSection

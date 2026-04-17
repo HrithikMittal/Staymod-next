@@ -4,10 +4,19 @@ import type { ApiKeyItem, ListApiKeysResponse } from "@/api-clients";
 import { createApiKey, deleteApiKey, updateApiKey } from "@/api-clients/api-keys";
 import { CheckIcon, CopyIcon, ExternalLinkIcon } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useApiQuery } from "@/hooks";
@@ -19,6 +28,7 @@ type IntegrationsPageProps = {
 const SCOPE_OPTIONS = [
   { scope: "rooms:read", hint: "List rooms for this property." },
   { scope: "availability:read", hint: "Room availability and nightly prices." },
+  { scope: "booking-options:read", hint: "List active booking options (public API)." },
   { scope: "bookings:read", hint: "GET bookings by guest email or by booking id (public API)." },
   { scope: "bookings:write", hint: "Create bookings (public API)." },
 ] as const;
@@ -46,6 +56,7 @@ function SectionCard({
 export function IntegrationsPage({ propertyId }: IntegrationsPageProps) {
   const queryClient = useQueryClient();
   const [copied, setCopied] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [rawKey, setRawKey] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
   const [allowedOriginsText, setAllowedOriginsText] = useState("");
@@ -123,88 +134,120 @@ export function IntegrationsPage({ propertyId }: IntegrationsPageProps) {
         description="Manage API keys with scopes and origin/IP restrictions for customer integrations."
       >
         <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="integration-api-key-name">Key name (optional)</Label>
-            <Input
-              id="integration-api-key-name"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="Customer website production key"
+          <Dialog
+            open={createDialogOpen}
+            onOpenChange={(open) => {
+              setCreateDialogOpen(open);
+              if (open) {
+                setRawKey(null);
+                setCopied(false);
+              }
+            }}
+          >
+            <DialogTrigger
+              render={
+                <Button type="button">
+                  Create API key
+                </Button>
+              }
             />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Scopes</Label>
-            <div className="flex flex-col gap-2">
-              {SCOPE_OPTIONS.map(({ scope, hint }) => {
-                const checked = selectedScopes.includes(scope);
-                return (
-                  <label
-                    key={scope}
-                    className="flex cursor-pointer items-start gap-2 rounded-md border border-border/70 px-3 py-2 text-xs"
-                  >
-                    <Checkbox
-                      className="mt-0.5"
-                      checked={checked}
-                      onCheckedChange={(next) =>
-                        setSelectedScopes((prev) =>
-                          next ? [...new Set([...prev, scope])] : prev.filter((s) => s !== scope),
-                        )
-                      }
-                    />
-                    <span className="min-w-0 leading-snug">
-                      <span className="font-mono text-[0.8rem] text-foreground">{scope}</span>
-                      <span className="mt-0.5 block text-muted-foreground">{hint}</span>
-                    </span>
-                  </label>
-                );
-              })}
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="integration-allowed-origins">Allowed origins (comma/newline)</Label>
-            <Input
-              id="integration-allowed-origins"
-              value={allowedOriginsText}
-              onChange={(e) => setAllowedOriginsText(e.target.value)}
-              placeholder="https://www.customer.com, https://app.customer.com"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="integration-allowed-ips">Allowed IPs (optional, comma/newline)</Label>
-            <Input
-              id="integration-allowed-ips"
-              value={allowedIpsText}
-              onChange={(e) => setAllowedIpsText(e.target.value)}
-              placeholder="203.0.113.10, 198.51.100.22"
-            />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              onClick={() => createMutation.mutate()}
-              disabled={createMutation.isPending || selectedScopes.length === 0}
-            >
-              Create API key
-            </Button>
-          </div>
+            <DialogContent className="max-h-[85dvh] max-w-2xl overflow-hidden p-0">
+              <DialogHeader className="px-4 pt-4">
+                <DialogTitle>Create API key</DialogTitle>
+                <DialogDescription>
+                  Choose scopes and optional restrictions, then create a key for this property.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 overflow-y-auto px-4 pb-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="integration-api-key-name">Key name (optional)</Label>
+                  <Input
+                    id="integration-api-key-name"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    placeholder="Customer website production key"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Scopes</Label>
+                  <div className="flex flex-col gap-2">
+                    {SCOPE_OPTIONS.map(({ scope, hint }) => {
+                      const checked = selectedScopes.includes(scope);
+                      return (
+                        <label
+                          key={scope}
+                          className="flex cursor-pointer items-start gap-2 rounded-md border border-border/70 px-3 py-2 text-xs"
+                        >
+                          <Checkbox
+                            className="mt-0.5"
+                            checked={checked}
+                            onCheckedChange={(next) =>
+                              setSelectedScopes((prev) =>
+                                next ? [...new Set([...prev, scope])] : prev.filter((s) => s !== scope),
+                              )
+                            }
+                          />
+                          <span className="min-w-0 leading-snug">
+                            <span className="font-mono text-[0.8rem] text-foreground">{scope}</span>
+                            <span className="mt-0.5 block text-muted-foreground">{hint}</span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="integration-allowed-origins">Allowed origins (comma/newline)</Label>
+                  <Input
+                    id="integration-allowed-origins"
+                    value={allowedOriginsText}
+                    onChange={(e) => setAllowedOriginsText(e.target.value)}
+                    placeholder="https://www.customer.com, https://app.customer.com"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="integration-allowed-ips">Allowed IPs (optional, comma/newline)</Label>
+                  <Input
+                    id="integration-allowed-ips"
+                    value={allowedIpsText}
+                    onChange={(e) => setAllowedIpsText(e.target.value)}
+                    placeholder="203.0.113.10, 198.51.100.22"
+                  />
+                </div>
+                {rawKey ? (
+                  <div className="space-y-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 p-3">
+                    <Label htmlFor="integration-api-key">New API key (shown once)</Label>
+                    <div className="flex gap-2">
+                      <Input id="integration-api-key" value={rawKey} readOnly className="font-mono text-xs" />
+                      <Button type="button" variant="outline" onClick={copyApiKey}>
+                        {copied ? <CheckIcon data-icon="inline-start" /> : <CopyIcon data-icon="inline-start" />}
+                        {copied ? "Copied" : "Copy"}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Store this secret now. It cannot be retrieved again.</p>
+                  </div>
+                ) : null}
+              </div>
+              <div className="flex items-center justify-between gap-3 border-t bg-muted/50 px-4 py-3">
+                <p className="m-0 text-xs leading-normal text-muted-foreground sm:pr-4">
+                  At least one scope is required.
+                </p>
+                <Button
+                  className="shrink-0"
+                  type="button"
+                  onClick={() => createMutation.mutate()}
+                  disabled={createMutation.isPending || selectedScopes.length === 0}
+                >
+                  Create API key
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           <div className="space-y-1.5">
             <Label htmlFor="integration-api-base-url">Base API URL</Label>
             <Input id="integration-api-base-url" value={baseApiUrl} readOnly />
           </div>
-          {rawKey ? (
-          <div className="space-y-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 p-3">
-            <Label htmlFor="integration-api-key">New API key (shown once)</Label>
-            <div className="flex gap-2">
-              <Input id="integration-api-key" value={rawKey} readOnly className="font-mono text-xs" />
-              <Button type="button" variant="outline" onClick={copyApiKey}>
-                {copied ? <CheckIcon data-icon="inline-start" /> : <CopyIcon data-icon="inline-start" />}
-                {copied ? "Copied" : "Copy"}
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">Store this secret now. It cannot be retrieved again.</p>
-          </div>
-          ) : null}
 
           <div className="space-y-2">
             <Label>Existing keys</Label>
@@ -304,7 +347,11 @@ export function IntegrationsPage({ propertyId }: IntegrationsPageProps) {
           <li>Use idempotency keys in your write calls to avoid duplicates.</li>
         </ol>
         <div className="mt-4">
-          <Button type="button" variant="outline">
+          <Button
+            type="button"
+            variant="outline"
+            render={<Link href="/integration-guide" target="_blank" rel="noopener noreferrer" />}
+          >
             <ExternalLinkIcon data-icon="inline-start" />
             View API docs
           </Button>

@@ -8,6 +8,7 @@ export const API_KEY_SCOPES = [
   "*",
   "rooms:read",
   "availability:read",
+  "booking-options:read",
   "bookings:read",
   "bookings:write",
 ] as const;

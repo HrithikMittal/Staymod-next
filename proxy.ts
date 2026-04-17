@@ -4,6 +4,11 @@ import { NextResponse } from "next/server";
 /** `/` only — not `/integration-guide`, `/sign-in`, etc. */
 const isPrivateHomeRoute = createRouteMatcher([/^\/$/]);
 
+/** `/:id` property roots should be private, excluding known public top-level routes. */
+const isPrivatePropertyRootRoute = createRouteMatcher([
+  /^\/(?!sign-in$|sign-up$|integration-guide$|session-tasks$)[^/]+$/,
+]);
+
 /** Signed-in users without an org may visit these paths without being redirected to the org task page. */
 const isPublicWhenMissingOrg = createRouteMatcher([
   "/sign-in(.*)",
@@ -13,7 +18,7 @@ const isPublicWhenMissingOrg = createRouteMatcher([
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
-  if (isPrivateHomeRoute(req)) {
+  if (isPrivateHomeRoute(req) || isPrivatePropertyRootRoute(req)) {
     await auth.protect();
   }
 
