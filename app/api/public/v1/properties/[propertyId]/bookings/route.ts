@@ -1,10 +1,10 @@
 import { ObjectId } from "mongodb";
-import { NextResponse } from "next/server";
 
 import type { Booking } from "@/types/booking";
 import { BOOKINGS_COLLECTION } from "@/types/booking";
 import type { Room } from "@/types/room";
 import { getDb } from "@/utils/mongodb";
+import { publicApiJsonResponse, publicApiOptionsResponse } from "@/utils/public-api-cors";
 import { requirePublicApiAuth } from "@/utils/public-api-auth";
 import {
   applyBookingInventoryDeduction,
@@ -18,6 +18,10 @@ const ROOMS_COLLECTION = "rooms";
 type RouteContext = {
   params: Promise<{ propertyId: string }>;
 };
+
+export async function OPTIONS(req: Request) {
+  return publicApiOptionsResponse(req);
+}
 
 function serializeBooking(b: Booking) {
   return {
@@ -82,7 +86,7 @@ export async function POST(req: Request, context: RouteContext) {
     const { propertyId } = await context.params;
     propertyObjectId = parsePropertyId(propertyId);
   } catch {
-    return NextResponse.json({ error: "Invalid property id." }, { status: 400 });
+    return publicApiJsonResponse(req, { error: "Invalid property id." }, { status: 400 });
   }
 
   const auth = await requirePublicApiAuth(req, "bookings:write", propertyObjectId);
@@ -101,8 +105,11 @@ export async function POST(req: Request, context: RouteContext) {
       roomMap[line.roomId.toString()] = room;
 
       if (line.quantity > room.unitCount) {
-        return NextResponse.json(
-          { error: `quantity cannot exceed this room listing's unit count (${room.unitCount}) for "${room.name}".` },
+        return publicApiJsonResponse(
+          req,
+          {
+            error: `quantity cannot exceed this room listing's unit count (${room.unitCount}) for "${room.name}".`,
+          },
           { status: 400 },
         );
       }
@@ -129,9 +136,10 @@ export async function POST(req: Request, context: RouteContext) {
       await applyBookingInventoryDeduction(created);
     }
 
-    return NextResponse.json({ booking: serializeBooking(created) }, { status: 201 });
+    return publicApiJsonResponse(req, { booking: serializeBooking(created) }, { status: 201 });
   } catch (error) {
-    return NextResponse.json(
+    return publicApiJsonResponse(
+      req,
       { error: error instanceof Error ? error.message : "Failed to create booking." },
       { status: 400 },
     );

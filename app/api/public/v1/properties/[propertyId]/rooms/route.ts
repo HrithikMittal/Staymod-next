@@ -1,8 +1,7 @@
-import { NextResponse } from "next/server";
-
 import type { Room } from "@/types/room";
 import { ROOM_TAGS_COLLECTION, type RoomTag } from "@/types/room-tag";
 import { getDb } from "@/utils/mongodb";
+import { publicApiJsonResponse, publicApiOptionsResponse } from "@/utils/public-api-cors";
 import { requirePublicApiAuth } from "@/utils/public-api-auth";
 import { parsePropertyId } from "@/utils/schemas/room";
 import { serializeRoomForApi } from "@/utils/serialize-room-api";
@@ -13,13 +12,17 @@ type RouteContext = {
   params: Promise<{ propertyId: string }>;
 };
 
+export async function OPTIONS(req: Request) {
+  return publicApiOptionsResponse(req);
+}
+
 export async function GET(req: Request, context: RouteContext) {
   let propertyObjectId;
   try {
     const { propertyId } = await context.params;
     propertyObjectId = parsePropertyId(propertyId);
   } catch {
-    return NextResponse.json({ error: "Invalid property id." }, { status: 400 });
+    return publicApiJsonResponse(req, { error: "Invalid property id." }, { status: 400 });
   }
 
   const auth = await requirePublicApiAuth(req, "rooms:read", propertyObjectId);
@@ -43,7 +46,7 @@ export async function GET(req: Request, context: RouteContext) {
     .toArray();
   const tagsById = new Map(tags.map((tag) => [tag._id.toString(), tag]));
 
-  return NextResponse.json({
+  return publicApiJsonResponse(req, {
     rooms: rooms.map((room) => serializeRoomForApi(room, tagsById)),
   });
 }

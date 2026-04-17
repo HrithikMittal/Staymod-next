@@ -1,5 +1,4 @@
 import { ObjectId } from "mongodb";
-import { NextResponse } from "next/server";
 
 import type { Booking } from "@/types/booking";
 import { BOOKINGS_COLLECTION } from "@/types/booking";
@@ -7,6 +6,7 @@ import type { Room } from "@/types/room";
 import { eachUtcNightDateKeysBetween, formatDateKeyUtc, isValidDateKey } from "@/utils/date-key";
 import { getDb } from "@/utils/mongodb";
 import { loadNightlyPricingMap, resolveNightlyPriceForCell } from "@/utils/nightly-pricing-db";
+import { publicApiJsonResponse, publicApiOptionsResponse } from "@/utils/public-api-cors";
 import { requirePublicApiAuth } from "@/utils/public-api-auth";
 import { isWeekendNightUtc } from "@/utils/room-nightly-price";
 import {
@@ -24,6 +24,10 @@ const ROOMS_COLLECTION = "rooms";
 type RouteContext = {
   params: Promise<{ propertyId: string }>;
 };
+
+export async function OPTIONS(req: Request) {
+  return publicApiOptionsResponse(req);
+}
 
 function addDaysDateKey(dateKey: string, days: number): string {
   const d = new Date(`${dateKey}T00:00:00.000Z`);
@@ -55,7 +59,7 @@ export async function GET(req: Request, context: RouteContext) {
     const { propertyId } = await context.params;
     propertyObjectId = parsePropertyId(propertyId);
   } catch {
-    return NextResponse.json({ error: "Invalid property id." }, { status: 400 });
+    return publicApiJsonResponse(req, { error: "Invalid property id." }, { status: 400 });
   }
 
   const auth = await requirePublicApiAuth(req, "availability:read", propertyObjectId);
@@ -72,19 +76,20 @@ export async function GET(req: Request, context: RouteContext) {
     from = parseDateParam(url.searchParams.get("from"), today);
     to = parseDateParam(url.searchParams.get("to"), defaultTo);
   } catch (error) {
-    return NextResponse.json(
+    return publicApiJsonResponse(
+      req,
       { error: error instanceof Error ? error.message : "Invalid date range." },
       { status: 400 },
     );
   }
 
   if (from > to) {
-    return NextResponse.json({ error: "from must be before or equal to to." }, { status: 400 });
+    return publicApiJsonResponse(req, { error: "from must be before or equal to to." }, { status: 400 });
   }
 
   const dateKeys = dateKeysInclusive(from, to);
   if (dateKeys.length > 62) {
-    return NextResponse.json({ error: "Date range cannot exceed 62 nights." }, { status: 400 });
+    return publicApiJsonResponse(req, { error: "Date range cannot exceed 62 nights." }, { status: 400 });
   }
 
   const db = await getDb();
@@ -154,7 +159,7 @@ export async function GET(req: Request, context: RouteContext) {
     }),
   );
 
-  return NextResponse.json({
+  return publicApiJsonResponse(req, {
     from,
     to,
     days,

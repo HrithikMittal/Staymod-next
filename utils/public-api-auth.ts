@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import type { ApiKey, ApiKeyScope } from "@/types/api-key";
 import { API_KEYS_COLLECTION } from "@/types/api-key";
 import { getDb } from "@/utils/mongodb";
+import { publicApiCorsHeaders } from "@/utils/public-api-cors";
 
 type PublicApiAuthSuccess = {
   orgId: string;
@@ -63,7 +64,10 @@ export async function requirePublicApiAuth(
   if (!token) {
     return {
       ok: false,
-      response: NextResponse.json({ error: "Missing Bearer API key." }, { status: 401 }),
+      response: NextResponse.json(
+        { error: "Missing Bearer API key." },
+        { status: 401, headers: publicApiCorsHeaders(req) },
+      ),
     };
   }
 
@@ -74,14 +78,20 @@ export async function requirePublicApiAuth(
   if (!apiKey || !apiKey.isActive) {
     return {
       ok: false,
-      response: NextResponse.json({ error: "Invalid API key." }, { status: 401 }),
+      response: NextResponse.json(
+        { error: "Invalid API key." },
+        { status: 401, headers: publicApiCorsHeaders(req) },
+      ),
     };
   }
 
   if (apiKey.expiresAt && apiKey.expiresAt.getTime() < Date.now()) {
     return {
       ok: false,
-      response: NextResponse.json({ error: "API key has expired." }, { status: 401 }),
+      response: NextResponse.json(
+        { error: "API key has expired." },
+        { status: 401, headers: publicApiCorsHeaders(req) },
+      ),
     };
   }
 
@@ -89,28 +99,40 @@ export async function requirePublicApiAuth(
   if (!originAllowed(apiKey, origin)) {
     return {
       ok: false,
-      response: NextResponse.json({ error: "Origin not allowed for this API key." }, { status: 403 }),
+      response: NextResponse.json(
+        { error: "Origin not allowed for this API key." },
+        { status: 403, headers: publicApiCorsHeaders(req) },
+      ),
     };
   }
 
   if (!ipAllowed(apiKey, req)) {
     return {
       ok: false,
-      response: NextResponse.json({ error: "IP not allowed for this API key." }, { status: 403 }),
+      response: NextResponse.json(
+        { error: "IP not allowed for this API key." },
+        { status: 403, headers: publicApiCorsHeaders(req) },
+      ),
     };
   }
 
   if (!scopeAllowed(apiKey, requiredScope)) {
     return {
       ok: false,
-      response: NextResponse.json({ error: "API key scope does not allow this action." }, { status: 403 }),
+      response: NextResponse.json(
+        { error: "API key scope does not allow this action." },
+        { status: 403, headers: publicApiCorsHeaders(req) },
+      ),
     };
   }
 
   if (!propertyAllowed(apiKey, propertyId)) {
     return {
       ok: false,
-      response: NextResponse.json({ error: "API key is not allowed for this property." }, { status: 403 }),
+      response: NextResponse.json(
+        { error: "API key is not allowed for this property." },
+        { status: 403, headers: publicApiCorsHeaders(req) },
+      ),
     };
   }
 
