@@ -4,8 +4,7 @@ import type { ApiKeyItem, ListApiKeysResponse } from "@/api-clients";
 import { createApiKey, deleteApiKey, updateApiKey } from "@/api-clients/api-keys";
 import { CheckIcon, CopyIcon, ExternalLinkIcon } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -58,6 +57,7 @@ export function IntegrationsPage({ propertyId }: IntegrationsPageProps) {
   const [copied, setCopied] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [rawKey, setRawKey] = useState<string | null>(null);
+  const [baseApiUrl, setBaseApiUrl] = useState("");
   const [newName, setNewName] = useState("");
   const [allowedOriginsText, setAllowedOriginsText] = useState("");
   const [allowedIpsText, setAllowedIpsText] = useState("");
@@ -102,11 +102,8 @@ export function IntegrationsPage({ propertyId }: IntegrationsPageProps) {
     },
   });
 
-  const baseApiUrl = useMemo(() => {
-    if (typeof window !== "undefined") {
-      return `${window.location.origin}/api/public/v1`;
-    }
-    return "https://your-domain.com/api/public/v1";
+  useEffect(() => {
+    setBaseApiUrl(`${window.location.origin}/api/public/v1`);
   }, []);
 
   async function copyApiKey() {
@@ -129,234 +126,238 @@ export function IntegrationsPage({ propertyId }: IntegrationsPageProps) {
         </p>
       </header>
 
-      <SectionCard
-        title="API Access"
-        description="Manage API keys with scopes and origin/IP restrictions for customer integrations."
-      >
-        <div className="space-y-4">
-          <Dialog
-            open={createDialogOpen}
-            onOpenChange={(open) => {
-              setCreateDialogOpen(open);
-              if (open) {
-                setRawKey(null);
-                setCopied(false);
-              }
-            }}
+      <div className="space-y-6">
+          <SectionCard
+            title="API Access"
+            description="Manage API keys with scopes and origin/IP restrictions for customer integrations."
           >
-            <DialogTrigger
-              render={
-                <Button type="button">
-                  Create API key
-                </Button>
-              }
-            />
-            <DialogContent className="max-h-[85dvh] max-w-2xl overflow-hidden p-0">
-              <DialogHeader className="px-4 pt-4">
-                <DialogTitle>Create API key</DialogTitle>
-                <DialogDescription>
-                  Choose scopes and optional restrictions, then create a key for this property.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 overflow-y-auto px-4 pb-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="integration-api-key-name">Key name (optional)</Label>
-                  <Input
-                    id="integration-api-key-name"
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    placeholder="Customer website production key"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Scopes</Label>
-                  <div className="flex flex-col gap-2">
-                    {SCOPE_OPTIONS.map(({ scope, hint }) => {
-                      const checked = selectedScopes.includes(scope);
-                      return (
-                        <label
-                          key={scope}
-                          className="flex cursor-pointer items-start gap-2 rounded-md border border-border/70 px-3 py-2 text-xs"
-                        >
-                          <Checkbox
-                            className="mt-0.5"
-                            checked={checked}
-                            onCheckedChange={(next) =>
-                              setSelectedScopes((prev) =>
-                                next ? [...new Set([...prev, scope])] : prev.filter((s) => s !== scope),
-                              )
-                            }
-                          />
-                          <span className="min-w-0 leading-snug">
-                            <span className="font-mono text-[0.8rem] text-foreground">{scope}</span>
-                            <span className="mt-0.5 block text-muted-foreground">{hint}</span>
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="integration-allowed-origins">Allowed origins (comma/newline)</Label>
-                  <Input
-                    id="integration-allowed-origins"
-                    value={allowedOriginsText}
-                    onChange={(e) => setAllowedOriginsText(e.target.value)}
-                    placeholder="https://www.customer.com, https://app.customer.com"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="integration-allowed-ips">Allowed IPs (optional, comma/newline)</Label>
-                  <Input
-                    id="integration-allowed-ips"
-                    value={allowedIpsText}
-                    onChange={(e) => setAllowedIpsText(e.target.value)}
-                    placeholder="203.0.113.10, 198.51.100.22"
-                  />
-                </div>
-                {rawKey ? (
-                  <div className="space-y-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 p-3">
-                    <Label htmlFor="integration-api-key">New API key (shown once)</Label>
-                    <div className="flex gap-2">
-                      <Input id="integration-api-key" value={rawKey} readOnly className="font-mono text-xs" />
-                      <Button type="button" variant="outline" onClick={copyApiKey}>
-                        {copied ? <CheckIcon data-icon="inline-start" /> : <CopyIcon data-icon="inline-start" />}
-                        {copied ? "Copied" : "Copy"}
-                      </Button>
+            <div className="space-y-4">
+              <Dialog
+                open={createDialogOpen}
+                onOpenChange={(open) => {
+                  setCreateDialogOpen(open);
+                  if (open) {
+                    setRawKey(null);
+                    setCopied(false);
+                  }
+                }}
+              >
+                <DialogTrigger
+                  render={
+                    <Button type="button">
+                      Create API key
+                    </Button>
+                  }
+                />
+                <DialogContent className="max-h-[85dvh] max-w-2xl overflow-hidden p-0">
+                  <DialogHeader className="px-4 pt-4">
+                    <DialogTitle>Create API key</DialogTitle>
+                    <DialogDescription>
+                      Choose scopes and optional restrictions, then create a key for this property.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 overflow-y-auto px-4 pb-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="integration-api-key-name">Key name (optional)</Label>
+                      <Input
+                        id="integration-api-key-name"
+                        value={newName}
+                        onChange={(e) => setNewName(e.target.value)}
+                        placeholder="Customer website production key"
+                      />
                     </div>
-                    <p className="text-xs text-muted-foreground">Store this secret now. It cannot be retrieved again.</p>
+                    <div className="space-y-1.5">
+                      <Label>Scopes</Label>
+                      <div className="flex flex-col gap-2">
+                        {SCOPE_OPTIONS.map(({ scope, hint }) => {
+                          const checked = selectedScopes.includes(scope);
+                          return (
+                            <label
+                              key={scope}
+                              className="flex cursor-pointer items-start gap-2 rounded-md border border-border/70 px-3 py-2 text-xs"
+                            >
+                              <Checkbox
+                                className="mt-0.5"
+                                checked={checked}
+                                onCheckedChange={(next) =>
+                                  setSelectedScopes((prev) =>
+                                    next ? [...new Set([...prev, scope])] : prev.filter((s) => s !== scope),
+                                  )
+                                }
+                              />
+                              <span className="min-w-0 leading-snug">
+                                <span className="font-mono text-[0.8rem] text-foreground">{scope}</span>
+                                <span className="mt-0.5 block text-muted-foreground">{hint}</span>
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="integration-allowed-origins">Allowed origins (comma/newline)</Label>
+                      <Input
+                        id="integration-allowed-origins"
+                        value={allowedOriginsText}
+                        onChange={(e) => setAllowedOriginsText(e.target.value)}
+                        placeholder="https://www.customer.com, https://app.customer.com"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="integration-allowed-ips">Allowed IPs (optional, comma/newline)</Label>
+                      <Input
+                        id="integration-allowed-ips"
+                        value={allowedIpsText}
+                        onChange={(e) => setAllowedIpsText(e.target.value)}
+                        placeholder="203.0.113.10, 198.51.100.22"
+                      />
+                    </div>
+                    {rawKey ? (
+                      <div className="space-y-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 p-3">
+                        <Label htmlFor="integration-api-key">New API key (shown once)</Label>
+                        <div className="flex gap-2">
+                          <Input id="integration-api-key" value={rawKey} readOnly className="font-mono text-xs" />
+                          <Button type="button" variant="outline" onClick={copyApiKey}>
+                            {copied ? <CheckIcon data-icon="inline-start" /> : <CopyIcon data-icon="inline-start" />}
+                            {copied ? "Copied" : "Copy"}
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Store this secret now. It cannot be retrieved again.</p>
+                      </div>
+                    ) : null}
                   </div>
-                ) : null}
-              </div>
-              <div className="flex items-center justify-between gap-3 border-t bg-muted/50 px-4 py-3">
-                <p className="m-0 text-xs leading-normal text-muted-foreground sm:pr-4">
-                  At least one scope is required.
-                </p>
-                <Button
-                  className="shrink-0"
-                  type="button"
-                  onClick={() => createMutation.mutate()}
-                  disabled={createMutation.isPending || selectedScopes.length === 0}
-                >
-                  Create API key
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+                  <div className="flex items-center justify-between gap-3 border-t bg-muted/50 px-4 py-3">
+                    <p className="m-0 text-xs leading-normal text-muted-foreground sm:pr-4">
+                      At least one scope is required.
+                    </p>
+                    <Button
+                      className="shrink-0"
+                      type="button"
+                      onClick={() => createMutation.mutate()}
+                      disabled={createMutation.isPending || selectedScopes.length === 0}
+                    >
+                      Create API key
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="integration-api-base-url">Base API URL</Label>
-            <Input id="integration-api-base-url" value={baseApiUrl} readOnly />
-          </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="integration-api-base-url">Base API URL</Label>
+                <Input id="integration-api-base-url" value={baseApiUrl} readOnly />
+              </div>
 
-          <div className="space-y-2">
-            <Label>Existing keys</Label>
-            {apiKeysQuery.isLoading ? (
-              <p className="text-sm text-muted-foreground">Loading API keys...</p>
-            ) : apiKeysQuery.isError ? (
-              <p className="text-sm text-destructive">{apiKeysQuery.error.message}</p>
-            ) : (apiKeysQuery.data?.apiKeys.length ?? 0) === 0 ? (
-              <p className="text-sm text-muted-foreground">No API keys yet.</p>
-            ) : (
               <div className="space-y-2">
-                {apiKeysQuery.data?.apiKeys.map((key) => (
-                  <div key={key._id} className="rounded-md border border-border/70 p-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div>
-                        <p className="font-medium">{key.name ?? "Unnamed key"}</p>
-                        <p className="font-mono text-xs text-muted-foreground">{key.keyPrefix}</p>
+                <Label>Existing keys</Label>
+                {apiKeysQuery.isLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading API keys...</p>
+                ) : apiKeysQuery.isError ? (
+                  <p className="text-sm text-destructive">{apiKeysQuery.error.message}</p>
+                ) : (apiKeysQuery.data?.apiKeys.length ?? 0) === 0 ? (
+                  <p className="text-sm text-muted-foreground">No API keys yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {apiKeysQuery.data?.apiKeys.map((key) => (
+                      <div key={key._id} className="rounded-md border border-border/70 p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <p className="font-medium">{key.name ?? "Unnamed key"}</p>
+                            <p className="font-mono text-xs text-muted-foreground">{key.keyPrefix}</p>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-xs text-muted-foreground">{key.isActive ? "Active" : "Inactive"}</span>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => toggleActiveMutation.mutate({ key, nextActive: !key.isActive })}
+                              disabled={toggleActiveMutation.isPending}
+                            >
+                              {key.isActive ? "Disable" : "Enable"}
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => deleteMutation.mutate(key)}
+                              disabled={deleteMutation.isPending}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </div>
+                        <p className="mt-2 text-xs text-muted-foreground">Scopes: {key.scopes.join(", ")}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Origins: {key.allowedOrigins.length > 0 ? key.allowedOrigins.join(", ") : "Any"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          IPs: {key.allowedIps.length > 0 ? key.allowedIps.join(", ") : "Any"}
+                        </p>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-xs text-muted-foreground">{key.isActive ? "Active" : "Inactive"}</span>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => toggleActiveMutation.mutate({ key, nextActive: !key.isActive })}
-                          disabled={toggleActiveMutation.isPending}
-                        >
-                          {key.isActive ? "Disable" : "Enable"}
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => deleteMutation.mutate(key)}
-                          disabled={deleteMutation.isPending}
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    </div>
-                    <p className="mt-2 text-xs text-muted-foreground">Scopes: {key.scopes.join(", ")}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Origins: {key.allowedOrigins.length > 0 ? key.allowedOrigins.join(", ") : "Any"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      IPs: {key.allowedIps.length > 0 ? key.allowedIps.join(", ") : "Any"}
-                    </p>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
-            )}
-          </div>
-        </div>
-      </SectionCard>
+            </div>
+          </SectionCard>
 
-      <SectionCard
-        title="Webhook Configuration"
-        description="Send booking and inventory events to your external platform."
-      >
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="integration-webhook-url">Webhook URL</Label>
-            <Input id="integration-webhook-url" placeholder="https://example.com/webhooks/staymod" />
-          </div>
-          <div className="grid gap-2">
-            <Label className="text-sm">Events</Label>
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox defaultChecked />
-              Booking created
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox defaultChecked />
-              Booking cancelled
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox defaultChecked />
-              Room availability updated
-            </label>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button type="button">Save webhook</Button>
-            <Button type="button" variant="outline">
-              Send test event
-            </Button>
-          </div>
-        </div>
-      </SectionCard>
-
-      <SectionCard
-        title="Quick Start"
-        description="Basic steps to integrate your system with Staymod APIs."
-      >
-        <ol className="list-inside list-decimal space-y-1.5 text-sm text-muted-foreground">
-          <li>Store your API key securely on the server side.</li>
-          <li>Call property APIs with your key in the Authorization header.</li>
-          <li>Subscribe to webhook events for near real-time sync.</li>
-          <li>Use idempotency keys in your write calls to avoid duplicates.</li>
-        </ol>
-        <div className="mt-4">
-          <Button
-            type="button"
-            variant="outline"
-            render={<Link href="/integration-guide" target="_blank" rel="noopener noreferrer" />}
+          <SectionCard
+            title="Webhook Configuration"
+            description="Send booking and inventory events to your external platform."
           >
-            <ExternalLinkIcon data-icon="inline-start" />
-            View API docs
-          </Button>
-        </div>
-      </SectionCard>
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="integration-webhook-url">Webhook URL</Label>
+                <Input id="integration-webhook-url" placeholder="https://example.com/webhooks/staymod" />
+              </div>
+              <div className="grid gap-2">
+                <Label className="text-sm">Events</Label>
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox defaultChecked />
+                  Booking created
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox defaultChecked />
+                  Booking cancelled
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox defaultChecked />
+                  Room availability updated
+                </label>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button">Save webhook</Button>
+                <Button type="button" variant="outline">
+                  Send test event
+                </Button>
+              </div>
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title="Quick Start"
+            description="Basic steps to integrate your system with Staymod APIs."
+          >
+            <ol className="list-inside list-decimal space-y-1.5 text-sm text-muted-foreground">
+              <li>Store your API key securely on the server side.</li>
+              <li>Call property APIs with your key in the Authorization header.</li>
+              <li>Subscribe to webhook events for near real-time sync.</li>
+              <li>Use idempotency keys in your write calls to avoid duplicates.</li>
+            </ol>
+            <div className="mt-4">
+              <button
+                type="button"
+                className="inline-flex h-8 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-2.5 text-sm font-medium whitespace-nowrap transition-all outline-none select-none hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                onClick={() => {
+                  window.open("/integration-guide", "_blank", "noopener,noreferrer");
+                }}
+              >
+                <ExternalLinkIcon data-icon="inline-start" />
+                View API docs
+              </button>
+            </div>
+          </SectionCard>
+      </div>
     </main>
   );
 }

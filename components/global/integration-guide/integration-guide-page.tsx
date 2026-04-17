@@ -1,5 +1,3 @@
-"use client";
-
 import { BookOpenIcon } from "lucide-react";
 import Link from "next/link";
 
@@ -8,23 +6,59 @@ import { buttonVariants } from "@/components/ui/button";
 
 import { CodeSample } from "./code-sample";
 
+const GUIDE_SECTION_NAV = [
+  { id: "base-url", label: "Base URL" },
+  { id: "authentication", label: "Authentication" },
+  { id: "origin-ip-rules", label: "Origin & IP rules" },
+  { id: "get-list-rooms", label: "GET List rooms" },
+  { id: "get-booking-options", label: "GET Booking options" },
+  { id: "get-room-availability", label: "GET Room availability" },
+  { id: "get-bookings-by-email", label: "GET Bookings by email" },
+  { id: "get-booking-by-id", label: "GET Booking by id" },
+  { id: "post-create-booking", label: "POST Create booking" },
+  { id: "managing-api-keys", label: "Managing API keys" },
+] as const;
+
 function GuideSection({
+  id,
   title,
   description,
   children,
 }: {
+  id: string;
   title: string;
   description?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-border/70 bg-card p-4 shadow-sm md:p-6">
+    <section id={id} className="scroll-mt-24 rounded-xl border border-border/70 bg-card p-4 shadow-sm md:p-6">
       <div className="mb-4">
         <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
         {description ? <p className="mt-1.5 text-sm text-muted-foreground">{description}</p> : null}
       </div>
       {children}
     </section>
+  );
+}
+
+function GuideSideNav() {
+  return (
+    <aside className="sticky top-4 hidden h-fit lg:block">
+      <div className="rounded-xl border border-border/70 bg-card p-3 shadow-sm">
+        <p className="px-2 pb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">On this page</p>
+        <nav aria-label="Integration guide sections" className="space-y-1">
+          {GUIDE_SECTION_NAV.map((item) => (
+            <a
+              key={item.id}
+              href={`#${item.id}`}
+              className="block rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+            >
+              {item.label}
+            </a>
+          ))}
+        </nav>
+      </div>
+    </aside>
   );
 }
 
@@ -108,7 +142,7 @@ export function IntegrationGuidePage({ publicApiBaseUrl }: IntegrationGuidePageP
 
   return (
     <main className="relative flex min-h-0 flex-1 flex-col overflow-y-auto bg-gradient-to-b from-muted/45 via-background to-background">
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-4 py-10 md:px-8">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-10 md:px-8">
         <HomeToolbar />
 
         <header className="flex flex-col gap-4 border-b border-border/60 pb-8">
@@ -135,8 +169,11 @@ export function IntegrationGuidePage({ publicApiBaseUrl }: IntegrationGuidePageP
           </div>
         </header>
 
-        <div className="flex flex-col gap-6">
+        <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+          <GuideSideNav />
+          <div className="flex flex-col gap-6">
           <GuideSection
+            id="base-url"
             title="Base URL"
             description="All public routes share this prefix. Replace YOUR_PROPERTY_ID with the property’s id from the dashboard."
           >
@@ -144,6 +181,7 @@ export function IntegrationGuidePage({ publicApiBaseUrl }: IntegrationGuidePageP
           </GuideSection>
 
           <GuideSection
+            id="authentication"
             title="Authentication"
             description="Send the secret key as a Bearer token. Create keys in Integrations and select the scopes you need."
           >
@@ -154,6 +192,7 @@ export function IntegrationGuidePage({ publicApiBaseUrl }: IntegrationGuidePageP
           </GuideSection>
 
           <GuideSection
+            id="origin-ip-rules"
             title="Origin and IP rules"
             description="Optional restrictions configured per key in Integrations."
           >
@@ -171,6 +210,7 @@ export function IntegrationGuidePage({ publicApiBaseUrl }: IntegrationGuidePageP
           </GuideSection>
 
           <GuideSection
+            id="get-list-rooms"
             title="GET — List rooms"
             description="Scope: rooms:read. Returns active rooms with serialized tags and images."
           >
@@ -178,6 +218,7 @@ export function IntegrationGuidePage({ publicApiBaseUrl }: IntegrationGuidePageP
           </GuideSection>
 
           <GuideSection
+            id="get-booking-options"
             title="GET — Booking options"
             description="Scope: booking-options:read. Returns active booking options for this property."
           >
@@ -185,6 +226,7 @@ export function IntegrationGuidePage({ publicApiBaseUrl }: IntegrationGuidePageP
           </GuideSection>
 
           <GuideSection
+            id="get-room-availability"
             title="GET — Room availability"
             description="Scope: availability:read. Query params from and to are YYYY-MM-DD (UTC). Defaults: from today, through 29 nights ahead. Maximum range: 62 nights."
           >
@@ -192,6 +234,7 @@ export function IntegrationGuidePage({ publicApiBaseUrl }: IntegrationGuidePageP
           </GuideSection>
 
           <GuideSection
+            id="get-bookings-by-email"
             title="GET — Bookings by guest email"
             description="Scope: bookings:read. Query param guestEmail is required (URL-encoded). Returns bookings for this property whose guest email matches, case-insensitive. Does not list all bookings without an email filter."
           >
@@ -199,6 +242,7 @@ export function IntegrationGuidePage({ publicApiBaseUrl }: IntegrationGuidePageP
           </GuideSection>
 
           <GuideSection
+            id="get-booking-by-id"
             title="GET — Booking by id"
             description="Scope: bookings:read. Path segment is the booking’s MongoDB id. Returns full booking details for this property, or 404 if missing."
           >
@@ -206,13 +250,14 @@ export function IntegrationGuidePage({ publicApiBaseUrl }: IntegrationGuidePageP
           </GuideSection>
 
           <GuideSection
+            id="post-create-booking"
             title="POST — Create booking"
             description="Scope: bookings:write. Guest fields, ISO checkIn/checkOut, and rooms (array items: roomId, quantity, optional roomNumbers). Optional: status — pending, confirmed, cancelled, or no_show (default pending). Optional advanceAmount, selectedOptions, customItems."
           >
             <CodeSample title="Example" code={createBookingExample} />
           </GuideSection>
 
-          <GuideSection title="Managing API keys" description="Keys are created per property and organization.">
+          <GuideSection id="managing-api-keys" title="Managing API keys" description="Keys are created per property and organization.">
             <p className="text-sm text-muted-foreground">
               Open a property, then choose <span className="text-foreground/90">Integrations</span> in the sidebar (
               <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">/[propertyId]/integrations</code>
@@ -220,6 +265,7 @@ export function IntegrationGuidePage({ publicApiBaseUrl }: IntegrationGuidePageP
               created.
             </p>
           </GuideSection>
+          </div>
         </div>
       </div>
     </main>
