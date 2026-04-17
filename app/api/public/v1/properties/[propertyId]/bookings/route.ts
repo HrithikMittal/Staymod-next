@@ -4,6 +4,7 @@ import type { Booking } from "@/types/booking";
 import { BOOKINGS_COLLECTION } from "@/types/booking";
 import type { Room } from "@/types/room";
 import { getDb } from "@/utils/mongodb";
+import { serializePublicBooking } from "@/utils/public-booking-serialize";
 import { publicApiJsonResponse, publicApiOptionsResponse } from "@/utils/public-api-cors";
 import { requirePublicApiAuth } from "@/utils/public-api-auth";
 import {
@@ -57,34 +58,11 @@ export async function GET(req: Request, context: RouteContext) {
     .sort({ checkIn: -1, createdAt: -1 })
     .toArray();
 
-  return publicApiJsonResponse(req, { bookings: bookings.map(serializeBooking) });
+  return publicApiJsonResponse(req, { bookings: bookings.map(serializePublicBooking) });
 }
 
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function serializeBooking(b: Booking) {
-  return {
-    _id: b._id.toString(),
-    orgId: b.orgId,
-    propertyId: b.propertyId.toString(),
-    guestName: b.guestName,
-    guestEmail: b.guestEmail,
-    checkIn: b.checkIn.toISOString(),
-    checkOut: b.checkOut.toISOString(),
-    numberOfGuests: b.numberOfGuests,
-    selectedOptions: b.selectedOptions?.map((o) => ({
-      ...o,
-      bookingOptionId: o.bookingOptionId.toString(),
-    })),
-    customItems: b.customItems,
-    advanceAmount: b.advanceAmount,
-    status: b.status,
-    rooms: b.rooms,
-    createdAt: b.createdAt.toISOString(),
-    updatedAt: b.updatedAt.toISOString(),
-  };
 }
 
 async function loadBookableRoom(
@@ -177,7 +155,7 @@ export async function POST(req: Request, context: RouteContext) {
       await applyBookingInventoryDeduction(created);
     }
 
-    return publicApiJsonResponse(req, { booking: serializeBooking(created) }, { status: 201 });
+    return publicApiJsonResponse(req, { booking: serializePublicBooking(created) }, { status: 201 });
   } catch (error) {
     return publicApiJsonResponse(
       req,

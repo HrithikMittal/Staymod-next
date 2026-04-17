@@ -19,7 +19,7 @@ type IntegrationsPageProps = {
 const SCOPE_OPTIONS = [
   { scope: "rooms:read", hint: "List rooms for this property." },
   { scope: "availability:read", hint: "Room availability and nightly prices." },
-  { scope: "bookings:read", hint: "GET bookings filtered by guest email (public API)." },
+  { scope: "bookings:read", hint: "GET bookings by guest email or by booking id (public API)." },
   { scope: "bookings:write", hint: "Create bookings (public API)." },
 ] as const;
 

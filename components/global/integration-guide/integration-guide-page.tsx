@@ -33,7 +33,10 @@ function ScopeTable() {
     { scope: "*", note: "All public endpoints below." },
     { scope: "rooms:read", note: "List rooms for a property." },
     { scope: "availability:read", note: "Room availability and nightly prices." },
-    { scope: "bookings:read", note: "List bookings for a guest email (GET with guestEmail query)." },
+    {
+      scope: "bookings:read",
+      note: "List bookings by guest email (guestEmail query) or get one booking by id (path).",
+    },
     { scope: "bookings:write", note: "Create bookings." },
   ];
   return (
@@ -78,6 +81,10 @@ export function IntegrationGuidePage({ publicApiBaseUrl }: IntegrationGuidePageP
   -H "Authorization: Bearer YOUR_API_KEY" \\
   "${baseUrl}/properties/YOUR_PROPERTY_ID/bookings?guestEmail=jane%40example.com"`;
 
+  const getBookingByIdExample = `curl -s \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  "${baseUrl}/properties/YOUR_PROPERTY_ID/bookings/BOOKING_OBJECT_ID"`;
+
   const createBookingExample = `curl -s -X POST \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
@@ -109,7 +116,8 @@ export function IntegrationGuidePage({ publicApiBaseUrl }: IntegrationGuidePageP
               <h1 className="text-3xl font-semibold tracking-tight">Public API integration</h1>
               <p className="max-w-2xl text-sm text-muted-foreground">
                 Use versioned HTTP endpoints to list rooms, read availability with nightly pricing, create bookings,
-                and look up bookings by guest email from your website. Authenticate with an API key you create under
+                and look up bookings by guest email or booking id from your website. Authenticate with an API key you
+                create under
                 each property&apos;s{" "}
                 <span className="text-foreground/90">Integrations</span> page.
               </p>
@@ -177,6 +185,13 @@ export function IntegrationGuidePage({ publicApiBaseUrl }: IntegrationGuidePageP
             description="Scope: bookings:read. Query param guestEmail is required (URL-encoded). Returns bookings for this property whose guest email matches, case-insensitive. Does not list all bookings without an email filter."
           >
             <CodeSample title="Example" code={listBookingsByEmailExample} />
+          </GuideSection>
+
+          <GuideSection
+            title="GET — Booking by id"
+            description="Scope: bookings:read. Path segment is the booking’s MongoDB id. Returns full booking details for this property, or 404 if missing."
+          >
+            <CodeSample title="Example" code={getBookingByIdExample} />
           </GuideSection>
 
           <GuideSection
