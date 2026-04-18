@@ -5,6 +5,7 @@ import type { Booking } from "@/types/booking";
 import { BOOKINGS_COLLECTION } from "@/types/booking";
 import type { Property } from "@/types/property";
 import type { Room } from "@/types/room";
+import { queueBookingGuestEmailNotification } from "@/utils/booking-guest-email";
 import { getActiveOrganizationId } from "@/utils/auth-org";
 import { getDb } from "@/utils/mongodb";
 import {
@@ -198,6 +199,13 @@ export async function PATCH(req: Request, context: RouteContext) {
     if (updated.status !== "cancelled") {
       await applyBookingInventoryDeduction(updated);
     }
+
+    queueBookingGuestEmailNotification({
+      orgId,
+      propertyId: propertyObjectId,
+      previous: old,
+      next: updated,
+    });
 
     return NextResponse.json({ booking: serializeBooking(updated) });
   } catch (error) {

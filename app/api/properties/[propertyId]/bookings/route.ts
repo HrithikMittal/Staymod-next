@@ -7,6 +7,7 @@ import type { Property } from "@/types/property";
 import type { Room } from "@/types/room";
 import { getActiveOrganizationId } from "@/utils/auth-org";
 import { getDb } from "@/utils/mongodb";
+import { queueBookingGuestEmailNotification } from "@/utils/booking-guest-email";
 import {
   assertAvailabilityForBooking,
   applyBookingInventoryDeduction,
@@ -187,6 +188,13 @@ export async function POST(req: Request, context: RouteContext) {
     if (created.status !== "cancelled") {
       await applyBookingInventoryDeduction(created);
     }
+
+    queueBookingGuestEmailNotification({
+      orgId,
+      propertyId: propertyObjectId,
+      previous: undefined,
+      next: created,
+    });
 
     return NextResponse.json({ booking: serializeBooking(created) }, { status: 201 });
   } catch (error) {

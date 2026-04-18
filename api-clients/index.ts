@@ -52,3 +52,10 @@ export {
   type CreateApiKeyResponse,
   type ListApiKeysResponse,
 } from "./api-keys";
+export {
+  fetchEmailSettings,
+  patchEmailSettings,
+  type GetEmailSettingsResponse,
+  type PatchEmailSettingsPayload,
+  type PropertyEmailSettingsPublic,
+} from "./email-settings";

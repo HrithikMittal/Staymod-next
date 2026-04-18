@@ -6,6 +6,7 @@ import type { Room } from "@/types/room";
 import { getDb } from "@/utils/mongodb";
 import { serializePublicBooking } from "@/utils/public-booking-serialize";
 import { publicApiJsonResponse, publicApiOptionsResponse } from "@/utils/public-api-cors";
+import { queueBookingGuestEmailNotification } from "@/utils/booking-guest-email";
 import { requirePublicApiAuth } from "@/utils/public-api-auth";
 import {
   applyBookingInventoryDeduction,
@@ -154,6 +155,13 @@ export async function POST(req: Request, context: RouteContext) {
     if (created.status !== "cancelled") {
       await applyBookingInventoryDeduction(created);
     }
+
+    queueBookingGuestEmailNotification({
+      orgId,
+      propertyId: propertyObjectId,
+      previous: undefined,
+      next: created,
+    });
 
     return publicApiJsonResponse(req, { booking: serializePublicBooking(created) }, { status: 201 });
   } catch (error) {

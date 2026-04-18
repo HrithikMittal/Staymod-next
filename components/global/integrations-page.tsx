@@ -2,9 +2,18 @@
 
 import type { ApiKeyItem, ListApiKeysResponse } from "@/api-clients";
 import { createApiKey, deleteApiKey, updateApiKey } from "@/api-clients/api-keys";
+import { PropertyEmailSettingsSection } from "@/components/global/property-email-settings-section";
 import { CheckIcon, CopyIcon, ExternalLinkIcon } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
+
+function usePublicV1BaseUrl(): string {
+  return useSyncExternalStore(
+    () => () => {},
+    () => `${window.location.origin}/api/public/v1`,
+    () => "",
+  );
+}
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -57,7 +66,7 @@ export function IntegrationsPage({ propertyId }: IntegrationsPageProps) {
   const [copied, setCopied] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [rawKey, setRawKey] = useState<string | null>(null);
-  const [baseApiUrl, setBaseApiUrl] = useState("");
+  const baseApiUrl = usePublicV1BaseUrl();
   const [newName, setNewName] = useState("");
   const [allowedOriginsText, setAllowedOriginsText] = useState("");
   const [allowedIpsText, setAllowedIpsText] = useState("");
@@ -101,10 +110,6 @@ export function IntegrationsPage({ propertyId }: IntegrationsPageProps) {
       await queryClient.invalidateQueries({ queryKey: ["integration-api-keys", propertyId] });
     },
   });
-
-  useEffect(() => {
-    setBaseApiUrl(`${window.location.origin}/api/public/v1`);
-  }, []);
 
   async function copyApiKey() {
     if (!rawKey) return;
@@ -299,6 +304,13 @@ export function IntegrationsPage({ propertyId }: IntegrationsPageProps) {
                 )}
               </div>
             </div>
+          </SectionCard>
+
+          <SectionCard
+            title="Guest email (Resend)"
+            description="Send transactional email to guests from your domain using your Resend API key."
+          >
+            <PropertyEmailSettingsSection propertyId={propertyId} />
           </SectionCard>
 
           <SectionCard
