@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { amenitiesForDisplayList } from "@/lib/display-room-amenities";
 import { cn } from "@/lib/utils";
 import {
   BedDoubleIcon,
@@ -67,6 +68,7 @@ export function RoomListItemRow({ room, onEdit, onDelete }: RoomListItemRowProps
   const unitCount = room.unitCount ?? 1;
   const typeLabel = room.type.replace(/_/g, " ");
   const bedSize = room.bedSize ?? room.bedSummary;
+  const amenityPills = amenitiesForDisplayList(room.amenities);
   const firstImageUrl =
     room.roomImages && room.roomImages.length > 0 ? room.roomImages[0].url : room.imageUrls?.[0];
 
@@ -191,16 +193,16 @@ export function RoomListItemRow({ room, onEdit, onDelete }: RoomListItemRowProps
               </div>
             ) : null}
 
-            {room.amenities?.length ? (
+            {amenityPills.length ? (
               <div className="flex flex-wrap gap-1">
-            {room.amenities.map((a) => (
-              <span
-                key={a}
-                className="inline-flex max-w-full items-center rounded-full border border-border/50 bg-muted/30 px-2 py-0.5 text-[11px] leading-tight text-muted-foreground"
-              >
-                <span className="truncate">{a}</span>
-              </span>
-            ))}
+                {amenityPills.map((label) => (
+                  <span
+                    key={label}
+                    className="inline-flex max-w-full items-center rounded-full border border-border/50 bg-muted/30 px-2 py-0.5 text-[11px] leading-tight text-muted-foreground"
+                  >
+                    <span className="truncate">{label}</span>
+                  </span>
+                ))}
               </div>
             ) : null}
           </div>

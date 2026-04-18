@@ -24,11 +24,17 @@ export async function ensureRoomTagIds(
     if (!slug) continue;
     const now = new Date();
     const doc = createRoomTagDocument(orgId, propertyId, name);
+    // `name` and `updatedAt` must not appear in both `$setOnInsert` and `$set` (MongoDB path conflict).
     const result = await db.collection<RoomTag>(ROOM_TAGS_COLLECTION).findOneAndUpdate(
       { orgId, propertyId, slug },
       {
-        $setOnInsert: doc,
-        $set: { name, updatedAt: now },
+        $setOnInsert: {
+          orgId,
+          propertyId,
+          slug,
+          createdAt: doc.createdAt,
+        },
+        $set: { name: doc.name, updatedAt: now },
       },
       { upsert: true, returnDocument: "after" },
     );

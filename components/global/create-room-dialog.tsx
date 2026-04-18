@@ -6,6 +6,15 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 
 import type { CreateRoomPayload, ListRoomTagsResponse, RoomListItem } from "@/api-clients";
 import { createRoom, createRoomImageUploadUrl, updateRoom } from "@/api-clients/rooms";
+import { RoomBathroomTab } from "@/components/global/create-room-dialog/room-bathroom-tab";
+import { RoomBedroomTab } from "@/components/global/create-room-dialog/room-bedroom-tab";
+import { RoomGuestAmenitiesTab } from "@/components/global/create-room-dialog/room-guest-amenities-tab";
+import {
+  RoomCreationTabBar,
+  roomTabPanelProps,
+  type RoomCreationTabId,
+} from "@/components/global/create-room-dialog/room-creation-tab-bar";
+import { RoomPoliciesTab } from "@/components/global/create-room-dialog/room-policies-tab";
 import { RoomAmenityChecklist } from "@/components/global/room-amenity-checklist";
 import { RoomNumberFields } from "@/components/global/room-number-fields";
 import { Button } from "@/components/ui/button";
@@ -17,7 +26,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useApiQuery } from "@/hooks";
-import { splitAmenitiesForEditForm } from "@/constants/room-amenity-presets";
+import type { BedTypeId } from "@/constants/room-creation-details";
+import {
+  buildBedFieldsFromCounts,
+  createEmptyRoomDetailsDraft,
+  mergeRoomAmenityList,
+  partitionStoredAmenities,
+  type RoomDetailsDraft,
+} from "@/lib/room-details-amenities";
 import { cn } from "@/lib/utils";
 import { ROOM_STATUSES, ROOM_TYPES } from "@/types/room";
 
@@ -91,6 +107,8 @@ export function CreateRoomDialog({
   const [draggingImageIndex, setDraggingImageIndex] = useState<number | null>(null);
   /** Free-text amenities line; preset checkboxes live in `form.amenities`. */
   const [amenitiesExtraText, setAmenitiesExtraText] = useState("");
+  const [activeTab, setActiveTab] = useState<RoomCreationTabId>("basics");
+  const [roomDetails, setRoomDetails] = useState<RoomDetailsDraft>(() => createEmptyRoomDetailsDraft());
   const imageStripRef = useRef<HTMLDivElement | null>(null);
   const imageStripDragState = useRef<{
     active: boolean;
@@ -117,7 +135,7 @@ export function CreateRoomDialog({
     }
     if (room) {
       const unitCount = room.unitCount ?? 1;
-      const amenitySplit = splitAmenitiesForEditForm(room.amenities ?? []);
+      const partitioned = partitionStoredAmenities(room.amenities ?? [], { bedCount: room.bedCount ?? 1 });
       setForm({
         name: room.name,
         type: room.type as CreateRoomPayload["type"],
@@ -144,9 +162,10 @@ export function CreateRoomDialog({
         tagNames: room.tags?.map((tag) => tag.name) ?? [],
         isActive: room.isActive,
         sortOrder: room.sortOrder,
-        amenities: amenitySplit.selectedPresets,
+        amenities: partitioned.presetSelected,
       });
-      setAmenitiesExtraText(amenitySplit.extraText);
+      setAmenitiesExtraText(partitioned.extraText);
+      setRoomDetails(partitioned.details);
       const initialRoomImages = room.roomImages?.length
         ? room.roomImages.map((img, idx) => ({
             url: img.url,
@@ -161,7 +180,9 @@ export function CreateRoomDialog({
       setRoomImages([{ url: "", sortOrder: 0 }]);
       setTagNamesText("");
       setAmenitiesExtraText("");
+      setRoomDetails(createEmptyRoomDetailsDraft());
     }
+    setActiveTab("basics");
     setRoomNumberError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- room identity via _id + updatedAt
   }, [open, room?._id, room?.updatedAt]);
@@ -173,6 +194,8 @@ export function CreateRoomDialog({
       setRoomImages([{ url: "", sortOrder: 0 }]);
       setTagNamesText("");
       setAmenitiesExtraText("");
+      setRoomDetails(createEmptyRoomDetailsDraft());
+      setActiveTab("basics");
       setImageUploadError(null);
       setUploadingImageIndex(null);
       setDraggingImageIndex(null);
@@ -243,14 +266,17 @@ export function CreateRoomDialog({
       setRoomNumberError("Enter a room number for each unit, or clear all room number fields.");
       return;
     }
-    const extraAmenities = amenitiesExtraText
-      .split(/[,;\n]/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-    const mergedAmenities = [...new Set([...(form.amenities ?? []), ...extraAmenities])];
+    const mergedAmenities = mergeRoomAmenityList({
+      presetSelected: form.amenities ?? [],
+      extraText: amenitiesExtraText,
+      details: roomDetails,
+    });
+    const bedFields = buildBedFieldsFromCounts(roomDetails.bedCounts);
     saveMutation.mutate({
       ...form,
       amenities: mergedAmenities,
+      bedCount: bedFields.bedCount,
+      bedSize: bedFields.bedSize,
       tagNames: [...new Set(parsedTagNames)],
       roomImages: normalizedImages,
       imageUrls,
@@ -338,7 +364,11 @@ export function CreateRoomDialog({
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-8 pb-4 pr-14">
-            <div className="space-y-6 py-4">
+            <div className="sticky top-0 z-10 -mx-4 bg-background/95 px-4 pb-3 pt-4 backdrop-blur supports-[backdrop-filter]:bg-background/85">
+              <RoomCreationTabBar value={activeTab} onValueChange={setActiveTab} />
+            </div>
+            <div className="space-y-6 py-2">
+              <div {...roomTabPanelProps("basics", activeTab)} className="space-y-6">
               <div className="flex flex-wrap gap-2">
               <div className={pill}>
                 <span className="text-xs text-muted-foreground">Type</span>
@@ -404,26 +434,6 @@ export function CreateRoomDialog({
               </div>
 
               <div className={pill}>
-                <span className="text-xs text-muted-foreground">No. of beds</span>
-                <input
-                  id="room-bed-count"
-                  name="bedCount"
-                  type="number"
-                  min={1}
-                  value={form.bedCount ?? 1}
-                  onChange={(event) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      bedCount: Number.parseInt(event.target.value, 10) || 1,
-                    }))
-                  }
-                  className={cn(pillInput, "w-12 text-center tabular-nums")}
-                  required
-                  title="Physical beds or sleep surfaces (each bunk level counts as one bed)"
-                />
-              </div>
-
-              <div className={pill}>
                 <span className="text-xs text-muted-foreground">No. of rooms</span>
                 <input
                   id="room-unit-count"
@@ -458,20 +468,6 @@ export function CreateRoomDialog({
                   className={cn(pillInput, "w-16")}
                 />
               </div>
-
-              <div className={cn(pill, "min-w-[min(100%,12rem)] flex-[1_1_100%] sm:flex-1")}>
-                <span className="text-xs text-muted-foreground">Beds</span>
-                <input
-                  id="room-bed"
-                  name="bedSize"
-                  value={form.bedSize ?? ""}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, bedSize: event.target.value || undefined }))
-                  }
-                  placeholder="e.g. King"
-                  className={pillInput}
-                />
-              </div>
               </div>
 
               <RoomNumberFields
@@ -487,8 +483,6 @@ export function CreateRoomDialog({
                 </p>
               ) : null}
 
-              <hr className="border-border/50" />
-
               <div className="space-y-2">
                 <textarea
                   id="room-description"
@@ -502,8 +496,23 @@ export function CreateRoomDialog({
                   rows={5}
                 />
               </div>
+              </div>
 
-              <hr className="border-border/50" />
+              <div {...roomTabPanelProps("amenities", activeTab)} className="space-y-6">
+              <RoomGuestAmenitiesTab
+                selectedIds={roomDetails.guestAmenityIds}
+                onToggle={(id, checked) => {
+                  setRoomDetails((prev) => {
+                    const next = new Set(prev.guestAmenityIds);
+                    if (checked) {
+                      next.add(id);
+                    } else {
+                      next.delete(id);
+                    }
+                    return { ...prev, guestAmenityIds: Array.from(next) };
+                  });
+                }}
+              />
 
               <div className="rounded-xl border border-border/60 bg-muted/25 p-4 sm:p-5">
                 <div className="mb-3">
@@ -522,9 +531,65 @@ export function CreateRoomDialog({
                   onExtraTextChange={setAmenitiesExtraText}
                 />
               </div>
+              </div>
 
-              <hr className="border-border/50" />
+              <div {...roomTabPanelProps("bathroom", activeTab)} className="space-y-6">
+              <RoomBathroomTab
+                privateBathroom={roomDetails.bathroomPrivate}
+                onPrivateChange={(value) =>
+                  setRoomDetails((prev) => ({ ...prev, bathroomPrivate: value }))
+                }
+                selectedItemIds={roomDetails.bathroomItemIds}
+                onItemToggle={(id, checked) => {
+                  setRoomDetails((prev) => {
+                    const next = new Set(prev.bathroomItemIds);
+                    if (checked) {
+                      next.add(id);
+                    } else {
+                      next.delete(id);
+                    }
+                    return { ...prev, bathroomItemIds: Array.from(next) };
+                  });
+                }}
+              />
+              </div>
 
+              <div {...roomTabPanelProps("bedroom", activeTab)} className="space-y-6">
+              <RoomBedroomTab
+                bedCounts={roomDetails.bedCounts}
+                onBedCountChange={(id: BedTypeId, next) =>
+                  setRoomDetails((prev) => ({
+                    ...prev,
+                    bedCounts: { ...prev.bedCounts, [id]: Math.max(0, next) },
+                  }))
+                }
+                showMoreBedTypes={roomDetails.showMoreBedTypes}
+                onShowMoreBedTypesChange={(value) =>
+                  setRoomDetails((prev) => ({ ...prev, showMoreBedTypes: value }))
+                }
+              />
+              </div>
+
+              <div {...roomTabPanelProps("policies", activeTab)} className="space-y-6">
+              <RoomPoliciesTab
+                smokingAllowed={roomDetails.policies.smoking}
+                partiesAllowed={roomDetails.policies.parties}
+                onSmokingChange={(value) =>
+                  setRoomDetails((prev) => ({
+                    ...prev,
+                    policies: { ...prev.policies, smoking: value },
+                  }))
+                }
+                onPartiesChange={(value) =>
+                  setRoomDetails((prev) => ({
+                    ...prev,
+                    policies: { ...prev.policies, parties: value },
+                  }))
+                }
+              />
+              </div>
+
+              <div {...roomTabPanelProps("more", activeTab)} className="space-y-6">
               <div className="space-y-3">
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Tags</p>
                 <input
@@ -600,7 +665,9 @@ export function CreateRoomDialog({
                   </div>
                 </div>
               </div>
+              </div>
 
+              <div {...roomTabPanelProps("images", activeTab)} className="space-y-6">
               <div className="rounded-xl border border-border/60 bg-muted/25 p-4 sm:p-5">
                 <div className="mb-3 flex items-center justify-between">
                   <div>
@@ -867,6 +934,7 @@ export function CreateRoomDialog({
                 {imageUploadError ? (
                   <p className="mt-2 text-xs text-destructive">{imageUploadError}</p>
                 ) : null}
+              </div>
               </div>
 
               {saveMutation.error ? (
