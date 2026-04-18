@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { CalendarIcon, MoreHorizontalIcon, PencilIcon, UserIcon } from "lucide-react";
+import { CalendarIcon, MailIcon, MoreHorizontalIcon, PencilIcon, UserIcon } from "lucide-react";
 import { formatMoney } from "@/utils/booking-pricing";
 
 function formatRange(checkIn: string, checkOut: string) {
@@ -40,6 +40,8 @@ type BookingListItemRowProps = {
   amountToPay?: number;
   remainingAmount?: number;
   onEdit: (booking: BookingListItem) => void;
+  onResendConfirmation?: () => void;
+  resendConfirmationPending?: boolean;
 };
 
 export function BookingListItemRow({
@@ -48,8 +50,12 @@ export function BookingListItemRow({
   amountToPay,
   remainingAmount,
   onEdit,
+  onResendConfirmation,
+  resendConfirmationPending,
 }: BookingListItemRowProps) {
   const statusLabel = booking.status.replace(/_/g, " ");
+  const canResendConfirmation =
+    booking.status === "confirmed" && Boolean(booking.guestEmail?.trim()) && onResendConfirmation;
 
   return (
     <li className="border-border/60 border-b last:border-b-0">
@@ -105,11 +111,20 @@ export function BookingListItemRow({
             >
               <MoreHorizontalIcon className="size-4" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" sideOffset={6} className="min-w-[120px]">
+            <DropdownMenuContent align="end" sideOffset={6} className="min-w-[180px]">
               <DropdownMenuItem onClick={() => onEdit(booking)}>
                 <PencilIcon className="size-4" />
                 Edit
               </DropdownMenuItem>
+              {canResendConfirmation ? (
+                <DropdownMenuItem
+                  onClick={() => onResendConfirmation()}
+                  disabled={resendConfirmationPending}
+                >
+                  <MailIcon className="size-4" />
+                  Resend confirmation email
+                </DropdownMenuItem>
+              ) : null}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

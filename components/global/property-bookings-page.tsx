@@ -1,14 +1,16 @@
 "use client";
 
 import type { BookingListItem, ListBookingsResponse } from "@/api-clients/bookings";
+import { resendConfirmationEmail } from "@/api-clients/bookings";
 import type { ListRoomsResponse, RoomListItem } from "@/api-clients/rooms";
 import { BookingListItemRow } from "@/components/global/booking-list-item";
 import { CreateBookingDialog } from "@/components/global/create-booking-dialog";
 import { Button } from "@/components/ui/button";
 import { useApiQuery } from "@/hooks";
 import { PlusIcon } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { calculateBookingAmount } from "@/utils/booking-pricing";
 
 export function PropertyBookingsPage() {
@@ -19,6 +21,23 @@ export function PropertyBookingsPage() {
     open: boolean;
     booking: BookingListItem | null;
   }>({ open: false, booking: null });
+  const [resendNotice, setResendNotice] = useState<string | null>(null);
+
+  const resendMutation = useMutation({
+    mutationFn: (bookingId: string) => resendConfirmationEmail(propertyId, bookingId),
+    onSuccess: () => {
+      setResendNotice("Confirmation email sent.");
+    },
+    onError: () => {
+      setResendNotice(null);
+    },
+  });
+
+  useEffect(() => {
+    if (!resendNotice) return;
+    const t = window.setTimeout(() => setResendNotice(null), 4000);
+    return () => window.clearTimeout(t);
+  }, [resendNotice]);
 
   const bookingsQuery = useApiQuery<ListBookingsResponse>(
     ["bookings", propertyId],
@@ -79,6 +98,16 @@ export function PropertyBookingsPage() {
             Reservations for this property. Creating or editing a booking updates nightly room
             availability.
           </p>
+          {resendNotice ? (
+            <p className="text-sm text-emerald-600 dark:text-emerald-400" role="status">
+              {resendNotice}
+            </p>
+          ) : null}
+          {resendMutation.isError ? (
+            <p className="text-sm text-destructive" role="alert">
+              {resendMutation.error.message}
+            </p>
+          ) : null}
         </div>
         <Button type="button" onClick={openCreate} disabled={!propertyId}>
           <PlusIcon data-icon="inline-start" />
@@ -133,6 +162,10 @@ export function PropertyBookingsPage() {
                 amountToPay={amount}
                 remainingAmount={Math.max(0, amount - (b.advanceAmount ?? 0))}
                 onEdit={openEdit}
+                resendConfirmationPending={
+                  resendMutation.isPending && resendMutation.variables === b._id
+                }
+                onResendConfirmation={() => resendMutation.mutate(b._id)}
               />
               );
             })}

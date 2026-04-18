@@ -73,3 +73,10 @@ export function updateBooking(propertyId: string, bookingId: string, payload: Cr
     },
   );
 }
+
+export function resendConfirmationEmail(propertyId: string, bookingId: string) {
+  return apiFetch<{ sent: boolean }>(
+    `/api/properties/${propertyId}/bookings/${bookingId}/resend-confirmation-email`,
+    { method: "POST" },
+  );
+}

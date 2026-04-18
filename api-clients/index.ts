@@ -28,6 +28,7 @@ export {
 export {
   createBooking,
   fetchBookings,
+  resendConfirmationEmail,
   updateBooking,
   type BookingListItem,
   type CreateBookingPayload,
