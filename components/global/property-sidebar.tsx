@@ -1,20 +1,13 @@
 "use client";
 
 import {
-  BedDoubleIcon,
-  CalendarRangeIcon,
-  ClipboardListIcon,
-  HandCoinsIcon,
-  LayoutDashboardIcon,
-  PlugZapIcon,
-  TagsIcon,
-  UsersIcon,
   PanelLeftCloseIcon,
   PanelLeftIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { getPropertyNavItems } from "@/components/global/property-nav-config";
 import { PropertyHeaderSwitcher } from "@/components/global/property-header-switcher";
 import { PropertySidebarFooter } from "@/components/global/property-sidebar-footer";
 import { Button } from "@/components/ui/button";
@@ -22,72 +15,19 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { usePropertySidebarCollapsed } from "@/hooks/use-property-sidebar-collapsed";
 import { cn } from "@/lib/utils";
 
-function navItems(propertyId: string) {
-  return [
-    {
-      href: `/${propertyId}/dashboard`,
-      label: "Dashboard",
-      icon: LayoutDashboardIcon,
-      match: (pathname: string) => pathname === `/${propertyId}/dashboard`,
-    },
-    {
-      href: `/${propertyId}/rooms`,
-      label: "Rooms",
-      icon: BedDoubleIcon,
-      match: (pathname: string) => pathname.startsWith(`/${propertyId}/rooms`),
-    },
-    {
-      href: `/${propertyId}/room-availability`,
-      label: "Room availability",
-      icon: CalendarRangeIcon,
-      match: (pathname: string) => pathname.startsWith(`/${propertyId}/room-availability`),
-    },
-    {
-      href: `/${propertyId}/bookings`,
-      label: "Bookings",
-      icon: ClipboardListIcon,
-      match: (pathname: string) => pathname.startsWith(`/${propertyId}/bookings`),
-    },
-    {
-      href: `/${propertyId}/booking-options`,
-      label: "Booking options",
-      icon: HandCoinsIcon,
-      match: (pathname: string) => pathname.startsWith(`/${propertyId}/booking-options`),
-    },
-    {
-      href: `/${propertyId}/room-tags`,
-      label: "Room tags",
-      icon: TagsIcon,
-      match: (pathname: string) => pathname.startsWith(`/${propertyId}/room-tags`),
-    },
-    {
-      href: `/${propertyId}/team/organization-members`,
-      label: "Team",
-      icon: UsersIcon,
-      match: (pathname: string) => pathname.startsWith(`/${propertyId}/team`),
-    },
-    {
-      href: `/${propertyId}/integrations`,
-      label: "Integrations",
-      icon: PlugZapIcon,
-      match: (pathname: string) => pathname.startsWith(`/${propertyId}/integrations`),
-    },
-  ] as const;
-}
-
 type PropertySidebarProps = {
   propertyId: string;
 };
 
 export function PropertySidebar({ propertyId }: PropertySidebarProps) {
   const pathname = usePathname();
-  const items = navItems(propertyId);
+  const items = getPropertyNavItems(propertyId);
   const { collapsed, toggleCollapsed } = usePropertySidebarCollapsed();
 
   return (
     <aside
       className={cn(
-        "sticky top-0 flex h-[100dvh] min-h-0 shrink-0 self-start flex-col border-sidebar-border border-r bg-sidebar",
+        "sticky top-0 hidden h-[100dvh] min-h-0 shrink-0 self-start flex-col border-sidebar-border border-r bg-sidebar md:flex",
         "transition-[width] duration-200 ease-out motion-reduce:transition-none",
         collapsed ? "w-[52px]" : "w-[220px]",
         "animate-[property-sidebar-in_0.45s_cubic-bezier(0.22,1,0.36,1)_both] motion-reduce:animate-none",
@@ -154,7 +94,7 @@ export function PropertySidebar({ propertyId }: PropertySidebarProps) {
       <div className={cn("flex min-h-0 flex-1 flex-col gap-1 overflow-auto py-4", collapsed ? "px-1.5" : "px-2")}>
         <nav aria-label="Property" className="flex flex-col gap-1">
           {items.map(({ href, label, icon: Icon, match }) => {
-            const active = match(pathname);
+            const active = match(pathname, propertyId);
             const linkClass = cn(
               "group relative flex items-center overflow-hidden rounded-md py-2",
               collapsed ? "justify-center px-0" : "gap-2.5 pr-2 pl-2",
