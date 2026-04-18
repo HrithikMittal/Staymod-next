@@ -102,7 +102,7 @@ function ListingPriceCell({
             type="button"
             variant="outline"
             className={cn(
-              "mx-auto h-auto min-h-[48px] w-[76px] flex-col justify-center gap-0.5 p-1.5 font-normal whitespace-normal",
+              "mx-auto h-auto min-h-[44px] w-[68px] flex-col justify-center gap-0.5 p-1 font-normal whitespace-normal sm:min-h-[48px] sm:w-[76px] sm:p-1.5",
               "border-border/80 bg-muted/50 text-foreground shadow-sm hover:bg-muted/70 dark:hover:bg-muted/60",
               priceIsOverride && "ring-2 ring-amber-500/55 ring-offset-1 ring-offset-background",
             )}
@@ -112,7 +112,7 @@ function ListingPriceCell({
         <span className="text-[10px] font-medium text-muted-foreground">Rate</span>
         <span className="text-[11px] font-semibold tabular-nums">{formatMoney(price)}</span>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-3" align="center">
+      <PopoverContent className="w-[min(100vw-1.5rem,20rem)] max-w-[calc(100vw-2rem)] p-3 sm:w-80" align="center">
         <PopoverTitle className="text-sm font-medium">Nightly rate · {dateLabel}</PopoverTitle>
         <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
           Default (weekday/weekend):{" "}
@@ -181,7 +181,7 @@ function UnitStatusBadge({
           }
         : {})}
       className={cn(
-        "mx-auto flex min-h-[48px] w-[76px] flex-col items-center justify-center rounded-md border px-1.5 py-1.5 shadow-sm",
+        "mx-auto flex min-h-[44px] w-[68px] flex-col items-center justify-center rounded-md border px-1 py-1.5 shadow-sm sm:min-h-[48px] sm:w-[76px] sm:px-1.5",
         clickable &&
           "cursor-pointer hover:brightness-[0.97] focus-visible:ring-ring ring-offset-background focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
         isFull
