@@ -1,4 +1,5 @@
 import { ClerkProvider } from "@clerk/nextjs";
+import { ui } from "@clerk/ui";
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 
@@ -33,6 +34,7 @@ export default function RootLayout({
       >
         <body className="h-[100dvh] min-h-full overflow-hidden flex flex-col bg-background text-foreground">
         <ClerkProvider
+          ui={ui}
           taskUrls={{
             "choose-organization": "/session-tasks/choose-organization",
           }}
