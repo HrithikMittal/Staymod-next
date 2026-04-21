@@ -24,7 +24,9 @@ function detectMobilePlatform() {
     return { isMobile: false, isIos: false, isAndroid: false, isSafari: false };
   }
   const ua = navigator.userAgent;
-  const isIos = /iPad|iPhone|iPod/i.test(ua);
+  // iPadOS can report a desktop-like UA, so also check touch-capable Mac.
+  const isTouchMac = navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+  const isIos = /iPad|iPhone|iPod/i.test(ua) || isTouchMac;
   const isAndroid = /Android/i.test(ua);
   const isMobile = isIos || isAndroid;
   const isSafari = /Safari/i.test(ua) && !/Chrome|CriOS|Edg|OPR|Firefox|FxiOS/i.test(ua);
@@ -33,7 +35,7 @@ function detectMobilePlatform() {
 
 export function MobileInstallPrompt() {
   const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState<"android" | "ios" | null>(null);
+  const [mode, setMode] = useState<"android" | "android_manual" | "ios" | null>(null);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [installing, setInstalling] = useState(false);
 
@@ -42,12 +44,22 @@ export function MobileInstallPrompt() {
     if (isStandaloneMode()) return;
     if (window.localStorage.getItem(DISMISS_KEY) === "1") return;
 
-    const { isMobile, isIos, isSafari } = detectMobilePlatform();
+    const { isMobile, isIos, isAndroid } = detectMobilePlatform();
     if (!isMobile) return;
 
-    if (isIos && isSafari) {
+    if (isIos) {
       setMode("ios");
       setOpen(true);
+    }
+
+    let androidFallbackTimer: number | null = null;
+    if (isAndroid) {
+      androidFallbackTimer = window.setTimeout(() => {
+        if (window.localStorage.getItem(DISMISS_KEY) === "1" || isStandaloneMode()) return;
+        // Fallback when beforeinstallprompt is unavailable (common without full PWA setup).
+        setMode((prev) => prev ?? "android_manual");
+        setOpen((prev) => prev || true);
+      }, 1200);
     }
 
     const onBeforeInstallPrompt = (event: Event) => {
@@ -59,7 +71,12 @@ export function MobileInstallPrompt() {
     };
 
     window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
-    return () => window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+      if (androidFallbackTimer != null) {
+        window.clearTimeout(androidFallbackTimer);
+      }
+    };
   }, []);
 
   function dismiss() {
@@ -97,6 +114,8 @@ export function MobileInstallPrompt() {
           <DialogDescription>
             {mode === "android"
               ? "Install the app for a faster full-screen experience."
+              : mode === "android_manual"
+                ? "Open your browser menu and choose 'Add to Home screen' (or 'Install app')."
               : "Open Share in Safari, then tap 'Add to Home Screen' to install this app."}
           </DialogDescription>
         </DialogHeader>
@@ -105,6 +124,12 @@ export function MobileInstallPrompt() {
             <li>Tap the Share icon in Safari.</li>
             <li>Select "Add to Home Screen".</li>
             <li>Tap Add.</li>
+          </ol>
+        ) : mode === "android_manual" ? (
+          <ol className="list-inside list-decimal space-y-1 text-sm text-muted-foreground">
+            <li>Tap the browser menu (three dots).</li>
+            <li>Select "Add to Home screen" or "Install app".</li>
+            <li>Confirm install.</li>
           </ol>
         ) : null}
         <DialogFooter>
