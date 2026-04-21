@@ -2,6 +2,7 @@
 
 import type { BookingListItem, ListBookingsResponse } from "@/api-clients/bookings";
 import { resendConfirmationEmail } from "@/api-clients/bookings";
+import { BookingDetailsDialog } from "@/components/global/booking-details-dialog";
 import type { ListRoomsResponse, RoomListItem } from "@/api-clients/rooms";
 import { BookingListItemRow } from "@/components/global/booking-list-item";
 import { CreateBookingDialog } from "@/components/global/create-booking-dialog";
@@ -18,6 +19,10 @@ export function PropertyBookingsPage() {
   const propertyId = typeof params.id === "string" ? params.id : "";
 
   const [dialog, setDialog] = useState<{
+    open: boolean;
+    booking: BookingListItem | null;
+  }>({ open: false, booking: null });
+  const [detailsDialog, setDetailsDialog] = useState<{
     open: boolean;
     booking: BookingListItem | null;
   }>({ open: false, booking: null });
@@ -87,6 +92,10 @@ export function PropertyBookingsPage() {
 
   function openEdit(booking: BookingListItem) {
     setDialog({ open: true, booking });
+  }
+
+  function openDetails(booking: BookingListItem) {
+    setDetailsDialog({ open: true, booking });
   }
 
   return (
@@ -161,6 +170,7 @@ export function PropertyBookingsPage() {
                 roomSummary={roomSummary}
                 amountToPay={amount}
                 remainingAmount={Math.max(0, amount - (b.advanceAmount ?? 0))}
+                onOpenDetails={openDetails}
                 onEdit={openEdit}
                 resendConfirmationPending={
                   resendMutation.isPending && resendMutation.variables === b._id
@@ -188,6 +198,28 @@ export function PropertyBookingsPage() {
           }}
         />
       ) : null}
+
+      <BookingDetailsDialog
+        open={detailsDialog.open}
+        booking={detailsDialog.booking}
+        roomSummary={
+          detailsDialog.booking
+            ? bookingRoomEntries(detailsDialog.booking)
+                .map((entry) => {
+                  const room = roomById.get(entry.roomId);
+                  const label = room?.name ?? roomNameById.get(entry.roomId) ?? "Room";
+                  return entry.quantity > 1 ? `${label} ×${entry.quantity}` : label;
+                })
+                .join(", ") || "Room"
+            : "Room"
+        }
+        onOpenChange={(open) => {
+          if (!open) {
+            setDetailsDialog({ open: false, booking: null });
+          }
+        }}
+        onEdit={openEdit}
+      />
     </main>
   );
 }

@@ -39,6 +39,7 @@ type BookingListItemRowProps = {
   roomSummary: string;
   amountToPay?: number;
   remainingAmount?: number;
+  onOpenDetails?: (booking: BookingListItem) => void;
   onEdit: (booking: BookingListItem) => void;
   onResendConfirmation?: () => void;
   resendConfirmationPending?: boolean;
@@ -49,6 +50,7 @@ export function BookingListItemRow({
   roomSummary,
   amountToPay,
   remainingAmount,
+  onOpenDetails,
   onEdit,
   onResendConfirmation,
   resendConfirmationPending,
@@ -59,7 +61,10 @@ export function BookingListItemRow({
 
   return (
     <li className="border-border/60 border-b last:border-b-0">
-      <div className="flex flex-wrap items-start gap-3 px-5 py-4 sm:flex-nowrap sm:items-center sm:justify-between">
+      <div
+        className="flex cursor-pointer flex-wrap items-start gap-3 px-5 py-4 sm:flex-nowrap sm:items-center sm:justify-between"
+        onClick={() => onOpenDetails?.(booking)}
+      >
         <div className="flex min-w-0 flex-1 gap-3">
           <div
             className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-muted/30 text-muted-foreground"
@@ -86,7 +91,10 @@ export function BookingListItemRow({
           </div>
         </div>
 
-        <div className="flex w-full shrink-0 items-center justify-between gap-2 sm:w-auto sm:justify-end">
+        <div
+          className="flex w-full shrink-0 items-center justify-between gap-2 sm:w-auto sm:justify-end"
+          onClick={(e) => e.stopPropagation()}
+        >
           <span
             className={cn(
               "inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/30 px-2 py-0.5 text-xs font-medium capitalize",
