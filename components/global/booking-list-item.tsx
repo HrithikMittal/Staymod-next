@@ -39,7 +39,7 @@ type BookingListItemRowProps = {
   roomSummary: string;
   amountToPay?: number;
   remainingAmount?: number;
-  onOpenDetails?: (booking: BookingListItem) => void;
+  onOpenDetails?: () => void;
   onEdit: (booking: BookingListItem) => void;
   onResendConfirmation?: () => void;
   resendConfirmationPending?: boolean;
@@ -63,7 +63,7 @@ export function BookingListItemRow({
     <li className="border-border/60 border-b last:border-b-0">
       <div
         className="flex cursor-pointer flex-wrap items-start gap-3 px-5 py-4 sm:flex-nowrap sm:items-center sm:justify-between"
-        onClick={() => onOpenDetails?.(booking)}
+        onClick={() => onOpenDetails?.()}
       >
         <div className="flex min-w-0 flex-1 gap-3">
           <div

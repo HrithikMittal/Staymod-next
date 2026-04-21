@@ -25,7 +25,8 @@ export function PropertyBookingsPage() {
   const [detailsDialog, setDetailsDialog] = useState<{
     open: boolean;
     booking: BookingListItem | null;
-  }>({ open: false, booking: null });
+    roomAmount: number;
+  }>({ open: false, booking: null, roomAmount: 0 });
   const [resendNotice, setResendNotice] = useState<string | null>(null);
 
   const resendMutation = useMutation({
@@ -94,8 +95,8 @@ export function PropertyBookingsPage() {
     setDialog({ open: true, booking });
   }
 
-  function openDetails(booking: BookingListItem) {
-    setDetailsDialog({ open: true, booking });
+  function openDetails(booking: BookingListItem, roomAmount: number) {
+    setDetailsDialog({ open: true, booking, roomAmount });
   }
 
   return (
@@ -170,7 +171,7 @@ export function PropertyBookingsPage() {
                 roomSummary={roomSummary}
                 amountToPay={amount}
                 remainingAmount={Math.max(0, amount - (b.advanceAmount ?? 0))}
-                onOpenDetails={openDetails}
+                onOpenDetails={() => openDetails(b, amount)}
                 onEdit={openEdit}
                 resendConfirmationPending={
                   resendMutation.isPending && resendMutation.variables === b._id
@@ -202,6 +203,7 @@ export function PropertyBookingsPage() {
       <BookingDetailsDialog
         open={detailsDialog.open}
         booking={detailsDialog.booking}
+        roomAmount={detailsDialog.roomAmount}
         roomSummary={
           detailsDialog.booking
             ? bookingRoomEntries(detailsDialog.booking)
@@ -215,7 +217,7 @@ export function PropertyBookingsPage() {
         }
         onOpenChange={(open) => {
           if (!open) {
-            setDetailsDialog({ open: false, booking: null });
+            setDetailsDialog({ open: false, booking: null, roomAmount: 0 });
           }
         }}
         onEdit={openEdit}
