@@ -266,6 +266,12 @@ export function IntegrationGuidePage({ publicApiBaseUrl }: IntegrationGuidePageP
           >
             <CodeSample title="Example" code={createBookingExample} />
             <p className="mt-3 text-sm text-muted-foreground">
+              Payment field: use{" "}
+              <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">advanceAmount</code>.{" "}
+              <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">amountPaid</code> is not accepted by
+              this API.
+            </p>
+            <p className="mt-3 text-sm text-muted-foreground">
               Tip: fetch option definitions first from{" "}
               <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
                 GET /api/public/v1/properties/YOUR_PROPERTY_ID/booking-options
