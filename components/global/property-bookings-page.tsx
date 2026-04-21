@@ -141,7 +141,7 @@ export function PropertyBookingsPage() {
           <ul className="list-none">
             {sortedBookings.map((b) => {
               const entries = bookingRoomEntries(b);
-              const amount = entries.reduce((sum, entry) => {
+              const roomAmount = entries.reduce((sum, entry) => {
                 const room = roomById.get(entry.roomId);
                 if (b.status === "cancelled") {
                   return 0;
@@ -154,6 +154,13 @@ export function PropertyBookingsPage() {
                   })
                 );
               }, 0);
+              const nights = Math.max(1, Math.round((new Date(b.checkOut).getTime() - new Date(b.checkIn).getTime()) / 86_400_000));
+              const optionsTotal = (b.selectedOptions ?? []).reduce(
+                (sum, opt) => sum + opt.pricePerUnit * opt.quantity * (opt.frequency === "day" ? nights : 1),
+                0,
+              );
+              const customTotal = (b.customItems ?? []).reduce((sum, item) => sum + item.amount, 0);
+              const totalAmount = roomAmount + optionsTotal + customTotal;
               const roomSummary =
                 entries.length === 0
                   ? "Room"
@@ -169,9 +176,9 @@ export function PropertyBookingsPage() {
                 key={b._id}
                 booking={b}
                 roomSummary={roomSummary}
-                amountToPay={amount}
-                remainingAmount={Math.max(0, amount - (b.advanceAmount ?? 0))}
-                onOpenDetails={() => openDetails(b, amount)}
+                amountToPay={totalAmount}
+                remainingAmount={Math.max(0, totalAmount - (b.advanceAmount ?? 0))}
+                onOpenDetails={() => openDetails(b, roomAmount)}
                 onEdit={openEdit}
                 resendConfirmationPending={
                   resendMutation.isPending && resendMutation.variables === b._id
