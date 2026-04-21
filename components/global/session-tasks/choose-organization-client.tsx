@@ -18,16 +18,6 @@ export function ChooseOrganizationClient() {
           </p>
         </div>
         <TaskChooseOrganization redirectUrlComplete="/" />
-        <div className="rounded-xl border border-border/70 bg-card p-5 shadow-sm">
-          <p className="mb-3 text-sm font-medium text-muted-foreground">Organization</p>
-          <div className="flex flex-wrap justify-center gap-2">
-            <OrganizationSwitcher
-              hidePersonal
-              afterSelectOrganizationUrl="/"
-              afterCreateOrganizationUrl="/"
-            />
-          </div>
-        </div>
       </div>
     </main>
   );
