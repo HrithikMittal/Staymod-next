@@ -18,11 +18,19 @@ const isPublicWhenMissingOrg = createRouteMatcher([
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
-  if (isPrivateHomeRoute(req) || isPrivatePropertyRootRoute(req)) {
-    await auth.protect();
+  const isProtectedRoute = isPrivateHomeRoute(req) || isPrivatePropertyRootRoute(req);
+  const { isAuthenticated, sessionStatus, userId, orgId, redirectToSignIn } = await auth();
+
+  if (isProtectedRoute && !isAuthenticated) {
+    // Docs pattern: pending sessions should be redirected to task UI, not sign-in.
+    if (sessionStatus === "pending") {
+      const url = req.nextUrl.clone();
+      url.pathname = "/session-tasks/choose-organization";
+      return NextResponse.redirect(url);
+    }
+    return redirectToSignIn();
   }
 
-  const { userId, orgId } = await auth();
 
   const pathname = req.nextUrl.pathname;
   if (pathname.startsWith("/api")) {
