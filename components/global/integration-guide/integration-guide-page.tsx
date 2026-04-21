@@ -136,6 +136,16 @@ export function IntegrationGuidePage({ publicApiBaseUrl }: IntegrationGuidePageP
     "rooms": [
       { "roomId": "ROOM_OBJECT_ID", "quantity": 1 }
     ],
+    "selectedOptions": [
+      {
+        "bookingOptionId": "BOOKING_OPTION_OBJECT_ID",
+        "name": "Breakfast",
+        "appliesTo": "user",
+        "frequency": "day",
+        "pricePerUnit": 350,
+        "quantity": 2
+      }
+    ],
     "status": "pending"
   }' \\
   "${baseUrl}/properties/YOUR_PROPERTY_ID/bookings"`;
@@ -252,9 +262,16 @@ export function IntegrationGuidePage({ publicApiBaseUrl }: IntegrationGuidePageP
           <GuideSection
             id="post-create-booking"
             title="POST — Create booking"
-            description="Scope: bookings:write. Guest fields, ISO checkIn/checkOut, and rooms (array items: roomId, quantity, optional roomNumbers). Optional: status — pending, confirmed, cancelled, or no_show (default pending). Optional advanceAmount, selectedOptions, customItems."
+            description="Scope: bookings:write. Guest fields, ISO checkIn/checkOut, and rooms (array items: roomId, quantity, optional roomNumbers). Optional status enum: pending | confirmed | cancelled | no_show (default: pending). Optional advanceAmount, selectedOptions, customItems. For selectedOptions, send full snapshot fields (bookingOptionId, name, appliesTo, frequency, pricePerUnit, quantity), not just the id."
           >
             <CodeSample title="Example" code={createBookingExample} />
+            <p className="mt-3 text-sm text-muted-foreground">
+              Tip: fetch option definitions first from{" "}
+              <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
+                GET /api/public/v1/properties/YOUR_PROPERTY_ID/booking-options
+              </code>{" "}
+              and copy the option fields into <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">selectedOptions</code>.
+            </p>
           </GuideSection>
 
           <GuideSection id="managing-api-keys" title="Managing API keys" description="Keys are created per property and organization.">
