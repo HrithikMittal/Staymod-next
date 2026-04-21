@@ -10,7 +10,9 @@ export const metadata: Metadata = {
 };
 
 export default async function ChooseOrganizationPage() {
-  const { userId } = await auth();
+  // Pending sessions must be treated as signed-in on this route,
+  // otherwise Clerk returns null userId and we incorrectly bounce to /sign-in.
+  const { userId } = await auth({ treatPendingAsSignedOut: false });
   if (!userId) {
     redirect("/sign-in");
   }
