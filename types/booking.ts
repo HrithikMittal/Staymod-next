@@ -52,6 +52,8 @@ export type Booking = OrganizationScope & {
   roomType?: RoomType;
   guestName: string;
   guestEmail?: string;
+  guestPhone?: string;
+  specialRequests?: string;
   /** First night (inclusive), property/UTC policy should match `dateKey` generation. */
   checkIn: Date;
   /** Last morning / departure (exclusive): nights are `[checkIn, checkOut)`. */
@@ -64,6 +66,8 @@ export type Booking = OrganizationScope & {
   customItems?: BookingCustomItem[];
   /** @deprecated legacy single-room shape retained for backward compatibility. */
   quantity?: number;
+  /** Discount applied to this booking total. */
+  discount?: number;
   /** Amount received in advance from guest at booking time. */
   advanceAmount?: number;
   status: BookingStatus;
@@ -82,12 +86,15 @@ export type CreateBookingInput = {
   propertyId: ObjectId;
   guestName: string;
   guestEmail?: string;
+  guestPhone?: string;
+  specialRequests?: string;
   checkIn: Date;
   checkOut: Date;
   numberOfGuests?: number;
   rooms: CreateBookingRoomInput[];
   selectedOptions?: BookingSelectedOption[];
   customItems?: BookingCustomItem[];
+  discount?: number;
   advanceAmount?: number;
   status: BookingStatus;
 };

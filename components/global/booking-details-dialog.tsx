@@ -35,7 +35,8 @@ export function BookingDetailsDialog({
     0,
   );
   const customTotal = (booking?.customItems ?? []).reduce((sum, item) => sum + item.amount, 0);
-  const totalAmount = roomAmount + optionsTotal + customTotal;
+  const discount = Math.max(0, booking?.discount ?? 0);
+  const totalAmount = Math.max(0, roomAmount + optionsTotal + customTotal - discount);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -99,6 +100,7 @@ export function BookingDetailsDialog({
               <p><strong>Room amount:</strong> {formatMoney(roomAmount)}</p>
               <p><strong>Options total:</strong> {formatMoney(optionsTotal)}</p>
               <p><strong>Extras total:</strong> {formatMoney(customTotal)}</p>
+              <p><strong>Discount:</strong> - {formatMoney(discount)}</p>
               <p className="mt-1 border-t border-border/70 pt-1">
                 <strong>Total amount:</strong> {formatMoney(totalAmount)}
               </p>

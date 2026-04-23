@@ -7,6 +7,8 @@ export type BookingListItem = {
   rooms: Record<string, { roomType: string; quantity: number; roomNumbers?: string[] }>;
   guestName: string;
   guestEmail?: string;
+  guestPhone?: string;
+  specialRequests?: string;
   checkIn: string;
   checkOut: string;
   numberOfGuests?: number;
@@ -19,6 +21,7 @@ export type BookingListItem = {
     quantity: number;
   }>;
   customItems?: Array<{ name: string; amount: number }>;
+  discount?: number;
   advanceAmount?: number;
   status: string;
   createdAt: string;
@@ -34,6 +37,8 @@ export type CreateBookingPayload = {
   rooms?: Record<string, { quantity: number; roomNumbers?: string[] }>;
   guestName: string;
   guestEmail?: string;
+  guestPhone?: string;
+  specialRequests?: string;
   /** ISO date string (e.g. from `<input type="date">` or full ISO). */
   checkIn: string;
   checkOut: string;
@@ -47,6 +52,7 @@ export type CreateBookingPayload = {
     quantity: number;
   }>;
   customItems?: Array<{ name: string; amount: number }>;
+  discount?: number;
   quantity?: number;
   roomNumbers?: string[];
   advanceAmount?: number;

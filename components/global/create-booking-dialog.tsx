@@ -21,12 +21,15 @@ const EMPTY: CreateBookingPayload = {
   roomId: "",
   guestName: "",
   guestEmail: "",
+  guestPhone: "",
+  specialRequests: "",
   checkIn: "",
   checkOut: "",
   quantity: 1,
   numberOfGuests: 1,
   selectedOptions: [],
   customItems: [],
+  discount: 0,
   advanceAmount: 0,
   status: "confirmed",
 };
@@ -48,6 +51,8 @@ function initialFormFromBooking(booking: BookingListItem): CreateBookingPayload 
     ),
     guestName: booking.guestName,
     guestEmail: booking.guestEmail ?? "",
+    guestPhone: booking.guestPhone ?? "",
+    specialRequests: booking.specialRequests ?? "",
     checkIn: isoDateOnly(booking.checkIn),
     checkOut: isoDateOnly(booking.checkOut),
     quantity: firstRoom?.quantity ?? 1,
@@ -55,6 +60,7 @@ function initialFormFromBooking(booking: BookingListItem): CreateBookingPayload 
     numberOfGuests: booking.numberOfGuests ?? 1,
     selectedOptions: booking.selectedOptions ?? [],
     customItems: booking.customItems ?? [],
+    discount: booking.discount ?? 0,
     advanceAmount: booking.advanceAmount ?? 0,
     status: booking.status as CreateBookingPayload["status"],
   };
@@ -105,7 +111,7 @@ export function CreateBookingDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         className={cn(
-          "flex max-h-[min(90vh,720px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-md",
+          "flex max-h-[min(90vh,720px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl",
           "rounded-2xl ring-1 ring-foreground/8",
         )}
         showCloseButton
@@ -240,6 +246,7 @@ function BookingForm({
     numberOfGuests: Math.max(1, initialForm.numberOfGuests ?? 1),
     selectedOptions: initialForm.selectedOptions ?? [],
     customItems: initialForm.customItems ?? [],
+    discount: initialForm.discount ?? 0,
     advanceAmount: initialForm.advanceAmount ?? 0,
     status: initialForm.status,
   });
@@ -255,6 +262,7 @@ function BookingForm({
   const [customItemsDrafts, setCustomItemsDrafts] = useState<CustomItemDraft[]>(
     () => (initialForm.customItems ?? []).map((c) => ({ name: c.name, amount: c.amount })),
   );
+  const [step, setStep] = useState<"guest" | "stay" | "extras">("guest");
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -296,6 +304,7 @@ function BookingForm({
         selectedOptions,
         customItems,
         guestEmail: form.guestEmail?.trim() || undefined,
+        discount: Math.max(0, Number(form.discount) || 0),
         advanceAmount: Math.max(0, Number(form.advanceAmount) || 0),
         status: form.status ?? "confirmed",
       } satisfies Omit<CreateBookingPayload, "roomId" | "quantity" | "rooms" | "roomNumbers">;
@@ -448,6 +457,7 @@ function BookingForm({
   const extrasAmount =
     selectedOptionsPricing.reduce((sum, row) => sum + row.subtotal, 0) +
     customItemsPricing.reduce((sum, row) => sum + row.subtotal, 0);
+  const discountAmount = Math.max(0, Number(form.discount) || 0);
   const roomTotalSingleGuest = roomSelections.reduce((sum, selection) => {
     const room = roomById.get(selection.roomId);
     return (
@@ -461,7 +471,7 @@ function BookingForm({
   const estimatedAmount =
     form.status === "cancelled"
       ? 0
-      : roomTotalSingleGuest + extrasAmount;
+      : Math.max(0, roomTotalSingleGuest + extrasAmount - discountAmount);
   const advanceAmount = Math.max(0, Number(form.advanceAmount) || 0);
   const remainingAmount = Math.max(0, estimatedAmount - advanceAmount);
   const roomBreakdown = roomSelections
@@ -479,67 +489,111 @@ function BookingForm({
         subtotal,
       };
     });
+  const canContinueGuest = form.guestName.trim().length > 0;
+  const canContinueStay =
+    Boolean(form.checkIn) &&
+    Boolean(form.checkOut) &&
+    normalizeRoomSelections(roomSelections).length > 0 &&
+    !hasDuplicateSelections;
 
   return (
     <form className="flex flex-col" onSubmit={handleSubmit}>
-      <div className="max-h-[min(60vh,480px)] overflow-y-auto px-6 py-4 pr-10">
+      <div className="max-h-[min(72vh,560px)] overflow-y-auto px-4 py-4 sm:px-6 sm:pr-10">
         <div className="space-y-4">
           <div className="border-border/60 border-b pb-4">
             <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
               {isEdit ? "Bookings · Edit" : "Bookings · New"}
             </p>
-            <div className="mt-3 flex items-start gap-3">
-              <div
-                className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-muted/30 text-muted-foreground"
-                aria-hidden
-              >
-                <UserIcon className="size-5" strokeWidth={1.5} />
-              </div>
-              <div className="min-w-0 flex-1 space-y-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="booking-guest">Guest name</Label>
-                  <Input
-                    id="booking-guest"
-                    value={form.guestName}
-                    onChange={(ev) => setForm((p) => ({ ...p, guestName: ev.target.value }))}
-                    className={field}
-                    required
-                    autoComplete="name"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="booking-email">Email (optional)</Label>
-                  <Input
-                    id="booking-email"
-                    type="email"
-                    value={form.guestEmail ?? ""}
-                    onChange={(ev) =>
-                      setForm((p) => ({ ...p, guestEmail: ev.target.value || undefined }))
-                    }
-                    className={field}
-                    autoComplete="email"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="booking-guests">Number of guests</Label>
-                  <Input
-                    id="booking-guests"
-                    type="number"
-                    min={1}
-                    value={form.numberOfGuests ?? 1}
-                    onChange={(ev) =>
-                      setForm((p) => ({
-                        ...p,
-                        numberOfGuests: Math.max(1, Number.parseInt(ev.target.value, 10) || 1),
-                      }))
-                    }
-                    className={field}
-                  />
-                </div>
-              </div>
+            <div className="mt-3 flex items-center gap-2 text-sm">
+              <button type="button" className={cn("rounded-full px-3 py-1", step === "guest" ? "bg-foreground text-background" : "bg-muted text-muted-foreground")} onClick={() => setStep("guest")}>1 Guest</button>
+              <span className="text-muted-foreground">—</span>
+              <button type="button" className={cn("rounded-full px-3 py-1", step === "stay" ? "bg-foreground text-background" : "bg-muted text-muted-foreground")} onClick={() => setStep("stay")}>2 Stay</button>
+              <span className="text-muted-foreground">—</span>
+              <button type="button" className={cn("rounded-full px-3 py-1", step === "extras" ? "bg-foreground text-background" : "bg-muted text-muted-foreground")} onClick={() => setStep("extras")}>3 Extras</button>
             </div>
           </div>
 
+          {step === "guest" ? (
+            <div className="space-y-4">
+              <div className="mt-1 flex items-start gap-3">
+                <div
+                  className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-muted/30 text-muted-foreground"
+                  aria-hidden
+                >
+                  <UserIcon className="size-5" strokeWidth={1.5} />
+                </div>
+                <div className="min-w-0 flex-1 space-y-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="booking-guest">Guest name</Label>
+                    <Input
+                      id="booking-guest"
+                      value={form.guestName}
+                      onChange={(ev) => setForm((p) => ({ ...p, guestName: ev.target.value }))}
+                      className={field}
+                      required
+                      autoComplete="name"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="booking-email">Email</Label>
+                    <Input
+                      id="booking-email"
+                      type="email"
+                      value={form.guestEmail ?? ""}
+                      onChange={(ev) =>
+                        setForm((p) => ({ ...p, guestEmail: ev.target.value || undefined }))
+                      }
+                      className={field}
+                      autoComplete="email"
+                      placeholder="guest@example.com"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="booking-phone">Phone number</Label>
+                    <Input
+                      id="booking-phone"
+                      type="tel"
+                      value={form.guestPhone ?? ""}
+                      onChange={(ev) =>
+                        setForm((p) => ({ ...p, guestPhone: ev.target.value || undefined }))
+                      }
+                      className={field}
+                      placeholder="+91 98765 43210"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="booking-guests">Number of guests</Label>
+                    <Input
+                      id="booking-guests"
+                      type="number"
+                      min={1}
+                      value={form.numberOfGuests ?? 1}
+                      onChange={(ev) =>
+                        setForm((p) => ({
+                          ...p,
+                          numberOfGuests: Math.max(1, Number.parseInt(ev.target.value, 10) || 1),
+                        }))
+                      }
+                      className={field}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="booking-special-requests">Special requests</Label>
+                    <textarea
+                      id="booking-special-requests"
+                      value={form.specialRequests ?? ""}
+                      onChange={(ev) => setForm((p) => ({ ...p, specialRequests: ev.target.value || undefined }))}
+                      className={cn(field, "min-h-24 w-full resize-none")}
+                      placeholder="Early check-in, ground floor, accessibility needs..."
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {step === "stay" ? (
+          <>
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-2">
               <Label>Room type(s)</Label>
@@ -714,7 +768,7 @@ function BookingForm({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="booking-in" className="inline-flex items-center gap-1">
                 <CalendarIcon className="size-3.5 opacity-70" aria-hidden />
@@ -784,7 +838,11 @@ function BookingForm({
                 ))}
               </select>
           </div>
+          </>
+          ) : null}
 
+          {step === "extras" ? (
+          <>
           <div className="rounded-lg border border-border/70 bg-muted/25 px-3 py-2">
             <p className="text-xs text-muted-foreground">
               {nights > 0 ? `${nights} night${nights === 1 ? "" : "s"}` : "Select valid dates"} ·
@@ -815,11 +873,34 @@ function BookingForm({
                     <p className="font-medium text-foreground">{formatMoney(row.subtotal)}</p>
                   </div>
                 ))}
+                {discountAmount > 0 ? (
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <p className="text-muted-foreground">Discount</p>
+                    <p className="font-medium text-foreground">- {formatMoney(discountAmount)}</p>
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="booking-discount">Discount</Label>
+              <Input
+                id="booking-discount"
+                type="number"
+                min={0}
+                step="0.01"
+                value={form.discount ?? 0}
+                onChange={(ev) =>
+                  setForm((p) => ({
+                    ...p,
+                    discount: Math.max(0, Number.parseFloat(ev.target.value) || 0),
+                  }))
+                }
+                className={field}
+              />
+            </div>
             <div className="space-y-1.5">
               <Label htmlFor="booking-advance">Advance amount</Label>
               <Input
@@ -851,20 +932,41 @@ function BookingForm({
           {saveMutation.error ? (
             <p className="text-sm text-destructive">{saveMutation.error.message}</p>
           ) : null}
+          </>
+          ) : null}
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center justify-end gap-1.5 border-t border-border/60 bg-background/95 px-5 py-2.5 supports-[backdrop-filter]:bg-background/80">
+      <div className="flex shrink-0 items-center justify-between gap-1.5 border-t border-border/60 bg-background/95 px-5 py-2.5 supports-[backdrop-filter]:bg-background/80">
         <Button type="button" variant="ghost" size="sm" onClick={onClose}>
           Cancel
         </Button>
-        <Button
-          type="submit"
-          size="sm"
-          disabled={saveMutation.isPending || (!isEdit && rooms.length === 0) || hasDuplicateSelections}
-        >
-          {saveMutation.isPending ? "Saving…" : isEdit ? "Save" : "Create bookings"}
-        </Button>
+        <div className="flex items-center gap-1.5">
+          {step !== "guest" ? (
+            <Button type="button" variant="outline" size="sm" onClick={() => setStep(step === "extras" ? "stay" : "guest")}>
+              Back
+            </Button>
+          ) : null}
+          {step === "guest" ? (
+            <Button type="button" size="sm" disabled={!canContinueGuest} onClick={() => setStep("stay")}>
+              Continue
+            </Button>
+          ) : null}
+          {step === "stay" ? (
+            <Button type="button" size="sm" disabled={!canContinueStay} onClick={() => setStep("extras")}>
+              Continue
+            </Button>
+          ) : null}
+          {step === "extras" ? (
+            <Button
+              type="submit"
+              size="sm"
+              disabled={saveMutation.isPending || (!isEdit && rooms.length === 0) || hasDuplicateSelections}
+            >
+              {saveMutation.isPending ? "Saving…" : isEdit ? "Save" : "Create bookings"}
+            </Button>
+          ) : null}
+        </div>
       </div>
     </form>
   );

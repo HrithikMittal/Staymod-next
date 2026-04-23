@@ -28,6 +28,7 @@ function bookingMeaningfullyChanged(previous: Booking, next: Booking): boolean {
   if (JSON.stringify(previous.customItems ?? []) !== JSON.stringify(next.customItems ?? [])) {
     return true;
   }
+  if (previous.discount !== next.discount) return true;
   if (previous.advanceAmount !== next.advanceAmount) return true;
   return false;
 }

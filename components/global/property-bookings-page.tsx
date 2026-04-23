@@ -160,7 +160,8 @@ export function PropertyBookingsPage() {
                 0,
               );
               const customTotal = (b.customItems ?? []).reduce((sum, item) => sum + item.amount, 0);
-              const totalAmount = roomAmount + optionsTotal + customTotal;
+              const discount = Math.max(0, b.discount ?? 0);
+              const totalAmount = Math.max(0, roomAmount + optionsTotal + customTotal - discount);
               const roomSummary =
                 entries.length === 0
                   ? "Room"

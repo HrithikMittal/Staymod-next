@@ -104,11 +104,14 @@ function payloadFromBooking(booking: BookingListItem): CreateBookingPayload {
   return {
     guestName: booking.guestName,
     guestEmail: booking.guestEmail,
+    guestPhone: booking.guestPhone,
+    specialRequests: booking.specialRequests,
     checkIn: booking.checkIn,
     checkOut: booking.checkOut,
     numberOfGuests: booking.numberOfGuests,
     selectedOptions: booking.selectedOptions,
     customItems: booking.customItems,
+    discount: booking.discount,
     advanceAmount: booking.advanceAmount,
     status: "cancelled",
     rooms: Object.fromEntries(
@@ -323,10 +326,11 @@ export function DateBookingsSheet({
                   0,
                 );
                 const customTotal = (booking.customItems ?? []).reduce((sum, item) => sum + item.amount, 0);
+                const discount = Math.max(0, booking.discount ?? 0);
 
                 let roomTotal = roomTotalFallback;
                 let roomNightlyTotals = roomNightlyTotalsFallback;
-                let totalAmount = roomTotalFallback + optionsTotal + customTotal;
+                let totalAmount = Math.max(0, roomTotalFallback + optionsTotal + customTotal - discount);
 
                 if (expandedBookingId === booking._id && nightlyPriceByRoomAndDateKey) {
                   roomNightlyTotals = nightDateKeys.map((dateKey) => {
@@ -340,7 +344,7 @@ export function DateBookingsSheet({
                   });
 
                   roomTotal = roomNightlyTotals.reduce((sum, v) => sum + v, 0);
-                  totalAmount = roomTotal + optionsTotal + customTotal;
+                  totalAmount = Math.max(0, roomTotal + optionsTotal + customTotal - discount);
                 }
                 return (
                   <li
@@ -453,6 +457,10 @@ export function DateBookingsSheet({
                                 <td className="py-0.5 text-right font-medium">
                                   {formatMoney(optionsTotal + customTotal)}
                                 </td>
+                              </tr>
+                              <tr>
+                                <td className="py-0.5 text-muted-foreground">Discount</td>
+                                <td className="py-0.5 text-right font-medium">- {formatMoney(discount)}</td>
                               </tr>
                               <tr className="border-t border-border/60">
                                 <td className="pt-1.5 font-semibold text-foreground">Total amount</td>
