@@ -3,6 +3,7 @@
 import {
   createBookingOption,
   deleteBookingOption,
+  importDefaultBookingOptions,
   type BookingOptionItem,
   type ListBookingOptionsResponse,
   type UpsertBookingOptionPayload,
@@ -14,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useApiQuery } from "@/hooks";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { PlusIcon } from "lucide-react";
+import { DownloadIcon, PlusIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 
@@ -77,6 +78,13 @@ export function PropertyBookingOptionsPage() {
       await queryClient.invalidateQueries({ queryKey: ["booking-options", propertyId] });
     },
   });
+  const importDefaultsMutation = useMutation({
+    mutationFn: () => importDefaultBookingOptions(propertyId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["booking-options", propertyId] });
+    },
+  });
+  const hasAnyOptions = sortedOptions.length > 0;
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 pt-3 pb-8 md:px-6">
@@ -87,10 +95,23 @@ export function PropertyBookingOptionsPage() {
             Configure extra services like food plans, heaters, and extra mattresses.
           </p>
         </div>
-        <Button type="button" onClick={() => setCreateOpen(true)} disabled={!propertyId}>
-          <PlusIcon data-icon="inline-start" />
-          New option
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {!hasAnyOptions ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => importDefaultsMutation.mutate()}
+              disabled={!propertyId || importDefaultsMutation.isPending}
+            >
+              <DownloadIcon data-icon="inline-start" />
+              {importDefaultsMutation.isPending ? "Importing..." : "Import default options"}
+            </Button>
+          ) : null}
+          <Button type="button" onClick={() => setCreateOpen(true)} disabled={!propertyId}>
+            <PlusIcon data-icon="inline-start" />
+            New option
+          </Button>
+        </div>
       </div>
 
       <section className="overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm">
@@ -101,9 +122,21 @@ export function PropertyBookingOptionsPage() {
         ) : sortedOptions.length === 0 ? (
           <div className="flex flex-col items-start gap-3 px-5 py-10">
             <p className="text-sm text-muted-foreground">No booking options yet.</p>
-            <Button type="button" variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
-              Add your first booking option
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => importDefaultsMutation.mutate()}
+                disabled={importDefaultsMutation.isPending}
+              >
+                <DownloadIcon data-icon="inline-start" />
+                {importDefaultsMutation.isPending ? "Importing defaults..." : "Import default options"}
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
+                Add your first booking option
+              </Button>
+            </div>
           </div>
         ) : (
           <ul className="list-none">
@@ -151,6 +184,9 @@ export function PropertyBookingOptionsPage() {
           ) : null}
         </DialogContent>
       </Dialog>
+      {importDefaultsMutation.isError ? (
+        <p className="text-sm text-destructive">{importDefaultsMutation.error.message}</p>
+      ) : null}
     </main>
   );
 }
