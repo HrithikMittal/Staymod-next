@@ -38,6 +38,7 @@ export {
   createBookingOption,
   deleteBookingOption,
   fetchBookingOptions,
+  importDefaultBookingOptions,
   updateBookingOption,
   type BookingOptionItem,
   type ListBookingOptionsResponse,

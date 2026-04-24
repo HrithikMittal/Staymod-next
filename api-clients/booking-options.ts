@@ -62,3 +62,9 @@ export function deleteBookingOption(propertyId: string, bookingOptionId: string)
     },
   );
 }
+
+export function importDefaultBookingOptions(propertyId: string) {
+  return apiFetch<{ imported: number }>(`/api/properties/${propertyId}/booking-options/import-defaults`, {
+    method: "POST",
+  });
+}
