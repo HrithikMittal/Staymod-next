@@ -5,6 +5,7 @@ export type PropertyEmailSettingsPublic = {
   hasApiKey: boolean;
   apiKeyMasked: string | null;
   fromEmail: string;
+  ccEmail: string;
   notifyOnConfirmation: boolean;
   notifyOnUpdate: boolean;
   notifyOnCancellation: boolean;
@@ -18,6 +19,7 @@ export type GetEmailSettingsResponse = {
 export type PatchEmailSettingsPayload = {
   resendApiKey?: string | null;
   fromEmail?: string;
+  ccEmail?: string;
   notifyOnConfirmation?: boolean;
   notifyOnUpdate?: boolean;
   notifyOnCancellation?: boolean;

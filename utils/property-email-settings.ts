@@ -25,6 +25,7 @@ export async function getPropertyEmailSettings(
 export type DecryptedPropertyEmailSettings = {
   resendApiKey: string;
   fromEmail: string;
+  ccEmail?: string;
   notifyOnConfirmation: boolean;
   notifyOnUpdate: boolean;
   notifyOnCancellation: boolean;
@@ -46,6 +47,7 @@ export async function loadDecryptedEmailSettings(
     return {
       resendApiKey,
       fromEmail: doc.fromEmail.trim(),
+      ccEmail: doc.ccEmail?.trim() || undefined,
       notifyOnConfirmation: doc.notifyOnConfirmation,
       notifyOnUpdate: doc.notifyOnUpdate,
       notifyOnCancellation: doc.notifyOnCancellation,
@@ -58,6 +60,7 @@ export async function loadDecryptedEmailSettings(
 export type UpsertPropertyEmailSettingsInput = {
   resendApiKey?: string | null;
   fromEmail?: string;
+  ccEmail?: string;
   notifyOnConfirmation?: boolean;
   notifyOnUpdate?: boolean;
   notifyOnCancellation?: boolean;
@@ -83,6 +86,7 @@ export async function upsertPropertyEmailSettings(
 
   const fromEmail =
     input.fromEmail !== undefined ? input.fromEmail.trim() : (existing?.fromEmail ?? "");
+  const ccEmail = input.ccEmail !== undefined ? input.ccEmail.trim() : (existing?.ccEmail ?? "");
   const notifyOnConfirmation =
     input.notifyOnConfirmation ?? existing?.notifyOnConfirmation ?? true;
   const notifyOnUpdate = input.notifyOnUpdate ?? existing?.notifyOnUpdate ?? true;
@@ -94,6 +98,7 @@ export async function upsertPropertyEmailSettings(
     propertyId,
     resendApiKeyStored,
     fromEmail,
+    ccEmail: ccEmail || undefined,
     notifyOnConfirmation,
     notifyOnUpdate,
     notifyOnCancellation,
@@ -132,6 +137,7 @@ export function serializePropertyEmailSettingsPublic(doc: PropertyEmailSettings 
       hasApiKey: false,
       apiKeyMasked: null as string | null,
       fromEmail: "",
+      ccEmail: "",
       notifyOnConfirmation: true,
       notifyOnUpdate: true,
       notifyOnCancellation: true,
@@ -154,6 +160,7 @@ export function serializePropertyEmailSettingsPublic(doc: PropertyEmailSettings 
     hasApiKey: Boolean(doc.resendApiKeyStored),
     apiKeyMasked,
     fromEmail: doc.fromEmail ?? "",
+    ccEmail: doc.ccEmail ?? "",
     notifyOnConfirmation: doc.notifyOnConfirmation,
     notifyOnUpdate: doc.notifyOnUpdate,
     notifyOnCancellation: doc.notifyOnCancellation,

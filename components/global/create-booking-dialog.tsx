@@ -817,6 +817,9 @@ function BookingForm({
               />
             </div>
           </div>
+          <p className="text-xs text-muted-foreground">
+            {nights > 0 ? `${nights} night${nights === 1 ? "" : "s"}` : "Select valid dates to see nights"}
+          </p>
 
           <div className="space-y-1.5">
               <Label htmlFor="booking-status">Status</Label>

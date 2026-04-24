@@ -6,11 +6,14 @@ import { Resend } from "resend";
 import type { Booking } from "@/types/booking";
 import type { BookingGuestEmailKind } from "@/types/booking-guest-email";
 import type { Property } from "@/types/property";
+import type { Room } from "@/types/room";
 import { buildBookingGuestEmailHtml } from "@/utils/booking-guest-email-html";
+import { calculateBookingAmount } from "@/utils/booking-pricing";
 import { getDb } from "@/utils/mongodb";
 import { loadDecryptedEmailSettings } from "@/utils/property-email-settings";
 
 const PROPERTIES_COLLECTION = "properties";
+const ROOMS_COLLECTION = "rooms";
 
 export type { BookingGuestEmailKind } from "@/types/booking-guest-email";
 
@@ -73,6 +76,46 @@ async function loadPropertyForEmail(orgId: string, propertyId: ObjectId): Promis
   });
 }
 
+type EmailRoomDetail = {
+  name: string;
+  roomType: string;
+  quantity: number;
+  roomNumbers?: string[];
+  priceWeekday?: number;
+  priceWeekend?: number;
+};
+
+async function loadEmailRoomDetails(args: {
+  orgId: string;
+  propertyId: ObjectId;
+  booking: Booking;
+}): Promise<EmailRoomDetail[]> {
+  const roomIds = Object.keys(args.booking.rooms ?? {}).filter((id) => ObjectId.isValid(id));
+  if (roomIds.length === 0) return [];
+  const db = await getDb();
+  const rooms = await db
+    .collection<Room>(ROOMS_COLLECTION)
+    .find({
+      orgId: args.orgId,
+      propertyId: args.propertyId,
+      _id: { $in: roomIds.map((id) => new ObjectId(id)) },
+    })
+    .toArray();
+  const roomById = new Map(rooms.map((r) => [r._id.toString(), r]));
+  return roomIds.map((roomId) => {
+    const alloc = args.booking.rooms?.[roomId];
+    const room = roomById.get(roomId);
+    return {
+      name: room?.name ?? `Room ${roomId.slice(-4)}`,
+      roomType: alloc?.roomType ?? room?.type ?? "other",
+      quantity: Math.max(1, alloc?.quantity ?? 1),
+      roomNumbers: alloc?.roomNumbers,
+      priceWeekday: room?.priceWeekday,
+      priceWeekend: room?.priceWeekend,
+    };
+  });
+}
+
 async function sendGuestEmailWithResend(args: {
   orgId: string;
   propertyId: ObjectId;
@@ -112,12 +155,29 @@ async function sendGuestEmailWithResend(args: {
     throw new Error("Property not found.");
   }
 
-  const { subject, html } = buildBookingGuestEmailHtml({ kind, property, booking });
+  const roomDetails = await loadEmailRoomDetails({ orgId, propertyId, booking });
+  const roomAmount = roomDetails.reduce(
+    (sum, room) =>
+      sum +
+      calculateBookingAmount(booking.checkIn.toISOString(), booking.checkOut.toISOString(), room.quantity, {
+        priceWeekday: room.priceWeekday,
+        priceWeekend: room.priceWeekend,
+      }),
+    0,
+  );
+  const { subject, html } = buildBookingGuestEmailHtml({
+    kind,
+    property,
+    booking,
+    roomDetails,
+    roomAmount,
+  });
   const resend = new Resend(settings.resendApiKey);
 
   const { error } = await resend.emails.send({
     from: settings.fromEmail,
     to: guestEmail,
+    ...(settings.ccEmail ? { cc: settings.ccEmail } : {}),
     subject,
     html,
   });

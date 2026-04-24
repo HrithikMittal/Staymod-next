@@ -12,6 +12,8 @@ export type PropertyEmailSettings = OrganizationScope & {
   resendApiKeyStored: string;
   /** Verified sender address in Resend (e.g. bookings@yourdomain.com). */
   fromEmail: string;
+  /** Optional always-on CC recipient for guest notifications. */
+  ccEmail?: string;
   notifyOnConfirmation: boolean;
   notifyOnUpdate: boolean;
   notifyOnCancellation: boolean;

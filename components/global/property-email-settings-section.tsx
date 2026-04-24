@@ -24,6 +24,7 @@ function PropertyEmailSettingsForm({
 }) {
   const queryClient = useQueryClient();
   const [fromEmail, setFromEmail] = useState(initial.fromEmail);
+  const [ccEmail, setCcEmail] = useState(initial.ccEmail);
   const [newApiKey, setNewApiKey] = useState("");
   const [notifyOnConfirmation, setNotifyOnConfirmation] = useState(initial.notifyOnConfirmation);
   const [notifyOnUpdate, setNotifyOnUpdate] = useState(initial.notifyOnUpdate);
@@ -34,6 +35,7 @@ function PropertyEmailSettingsForm({
       patchEmailSettings(propertyId, {
         ...(newApiKey.trim() ? { resendApiKey: newApiKey.trim() } : {}),
         fromEmail,
+        ccEmail,
         notifyOnConfirmation,
         notifyOnUpdate,
         notifyOnCancellation,
@@ -83,6 +85,21 @@ function PropertyEmailSettingsForm({
             Current key: <span className="font-mono">{initial.apiKeyMasked}</span>
           </p>
         ) : null}
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="resend-cc-email">CC address (optional)</Label>
+        <Input
+          id="resend-cc-email"
+          type="email"
+          value={ccEmail}
+          onChange={(e) => setCcEmail(e.target.value)}
+          placeholder="ops@yourdomain.com"
+          autoComplete="off"
+        />
+        <p className="text-xs text-muted-foreground">
+          If set, every guest email sent from this property will CC this address.
+        </p>
       </div>
 
       <div className="space-y-3 rounded-md border border-border/70 p-3">

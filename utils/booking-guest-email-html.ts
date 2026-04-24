@@ -35,8 +35,10 @@ export function buildBookingGuestEmailHtml(args: {
   kind: BookingGuestEmailKind;
   property: Property;
   booking: Booking;
+  roomDetails: Array<{ name: string; roomType: string; quantity: number; roomNumbers?: string[] }>;
+  roomAmount: number;
 }): { subject: string; html: string } {
-  const { kind, property, booking } = args;
+  const { kind, property, booking, roomDetails, roomAmount } = args;
   const companyName = property.name.trim() || "Property";
   const firstName = escapeHtml(guestFirstName(booking.guestName));
   const bookingRef = escapeHtml(booking._id.toString());
@@ -56,6 +58,52 @@ export function buildBookingGuestEmailHtml(args: {
   const guestCountEscaped = escapeHtml(guestCount);
   const companyAddress = escapeHtml(formatPropertyAddressLine(property));
   const year = new Date().getFullYear();
+  const guestPhone = booking.guestPhone?.trim() ? escapeHtml(booking.guestPhone) : "—";
+  const specialRequests = booking.specialRequests?.trim() ? escapeHtml(booking.specialRequests) : "—";
+
+  const nights = Math.max(1, Math.round((checkOutD.getTime() - checkInD.getTime()) / 86_400_000));
+  const roomRowsHtml =
+    roomDetails.length > 0
+      ? roomDetails
+          .map((room) => {
+            const numbers = room.roomNumbers?.length ? ` · #${room.roomNumbers.join(", ")}` : "";
+            return `<li style="margin:0;padding:0;padding-top:2px;padding-bottom:2px">${escapeHtml(room.name)} (${escapeHtml(room.roomType)}) × ${room.quantity}${escapeHtml(numbers)}</li>`;
+          })
+          .join("")
+      : `<li style="margin:0;padding:0;padding-top:2px;padding-bottom:2px">No room details available.</li>`;
+
+  const optionsRows = booking.selectedOptions ?? [];
+  const optionsHtml =
+    optionsRows.length > 0
+      ? optionsRows
+          .map((opt) => {
+            const lineTotal = opt.pricePerUnit * opt.quantity * (opt.frequency === "day" ? nights : 1);
+            return `<li style="margin:0;padding:0;padding-top:2px;padding-bottom:2px">${escapeHtml(opt.name)} × ${opt.quantity} (${escapeHtml(opt.frequency)}) — ${escapeHtml(String(lineTotal))}</li>`;
+          })
+          .join("")
+      : `<li style="margin:0;padding:0;padding-top:2px;padding-bottom:2px">No booking options.</li>`;
+
+  const customRows = booking.customItems ?? [];
+  const extrasHtml =
+    customRows.length > 0
+      ? customRows
+          .map(
+            (item) =>
+              `<li style="margin:0;padding:0;padding-top:2px;padding-bottom:2px">${escapeHtml(item.name)} — ${escapeHtml(String(item.amount))}</li>`,
+          )
+          .join("")
+      : `<li style="margin:0;padding:0;padding-top:2px;padding-bottom:2px">No custom extras.</li>`;
+
+  const optionsAmount = optionsRows.reduce(
+    (sum, opt) => sum + opt.pricePerUnit * opt.quantity * (opt.frequency === "day" ? nights : 1),
+    0,
+  );
+  const extrasAmount = customRows.reduce((sum, item) => sum + item.amount, 0);
+  const discount = Math.max(0, booking.discount ?? 0);
+  const advance = Math.max(0, booking.advanceAmount ?? 0);
+  const safeRoomAmount = Math.max(0, roomAmount);
+  const totalAmount = Math.max(0, safeRoomAmount + optionsAmount + extrasAmount - discount);
+  const dueAmount = Math.max(0, totalAmount - advance);
 
   const preheader =
     kind === "confirmation"
@@ -165,6 +213,47 @@ export function buildBookingGuestEmailHtml(args: {
                       style="margin:0;padding:0;font-size:1em;padding-top:0.5em;padding-bottom:0.5em">
                       <strong>Guests: </strong>${guestCountEscaped}
                     </p>
+                    <p
+                      style="margin:0;padding:0;font-size:1em;padding-top:0.5em;padding-bottom:0.5em">
+                      <strong>Phone: </strong>${guestPhone}
+                    </p>
+                    <p
+                      style="margin:0;padding:0;font-size:1em;padding-top:0.5em;padding-bottom:0.5em">
+                      <strong>Special requests: </strong>${specialRequests}
+                    </p>
+                    <p style="margin:0;padding:0;font-size:1em;padding-top:0.5em;padding-bottom:0.25em">
+                      <strong>Rooms</strong>
+                    </p>
+                    <ul style="margin:0;padding-left:18px">${roomRowsHtml}</ul>
+                    <p style="margin:0;padding:0;font-size:1em;padding-top:0.5em;padding-bottom:0.25em">
+                      <strong>Booking options</strong>
+                    </p>
+                    <ul style="margin:0;padding-left:18px">${optionsHtml}</ul>
+                    <p style="margin:0;padding:0;font-size:1em;padding-top:0.5em;padding-bottom:0.25em">
+                      <strong>Custom extras</strong>
+                    </p>
+                    <ul style="margin:0;padding-left:18px">${extrasHtml}</ul>
+                    <table style="border-collapse:collapse;margin-top:8px">
+                      <tr><td style="padding:2px 10px 2px 0;color:#555">Base room amount</td><td>${escapeHtml(String(safeRoomAmount))}</td></tr>
+                      ${
+                        optionsAmount > 0
+                          ? `<tr><td style="padding:2px 10px 2px 0;color:#555">Options total</td><td>${escapeHtml(String(optionsAmount))}</td></tr>`
+                          : ""
+                      }
+                      ${
+                        extrasAmount > 0
+                          ? `<tr><td style="padding:2px 10px 2px 0;color:#555">Extras total</td><td>${escapeHtml(String(extrasAmount))}</td></tr>`
+                          : ""
+                      }
+                      ${
+                        discount > 0
+                          ? `<tr><td style="padding:2px 10px 2px 0;color:#555">Discount</td><td>- ${escapeHtml(String(discount))}</td></tr>`
+                          : ""
+                      }
+                      <tr><td style="padding:2px 10px 2px 0;color:#555">Advance paid</td><td>${escapeHtml(String(advance))}</td></tr>
+                      <tr><td style="padding:4px 10px 2px 0;font-weight:600">Total amount</td><td style="font-weight:600">${escapeHtml(String(totalAmount))}</td></tr>
+                      <tr><td style="padding:2px 10px 2px 0;font-weight:600">Amount due</td><td style="font-weight:600">${escapeHtml(String(dueAmount))}</td></tr>
+                    </table>
                     ${
                       kind === "cancellation"
                         ? `<p style="margin:0;padding:0;font-size:1em;padding-top:0.5em;padding-bottom:0.5em">

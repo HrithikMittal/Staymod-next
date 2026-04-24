@@ -97,6 +97,12 @@ export async function PATCH(req: Request, context: RouteContext) {
   const fromEmail: string | undefined =
     payload.fromEmail === undefined ? undefined : payload.fromEmail;
 
+  if (payload.ccEmail !== undefined && typeof payload.ccEmail !== "string") {
+    return NextResponse.json({ error: "ccEmail must be a string." }, { status: 400 });
+  }
+
+  const ccEmail: string | undefined = payload.ccEmail === undefined ? undefined : payload.ccEmail;
+
   const notifyOnConfirmation =
     payload.notifyOnConfirmation === undefined
       ? undefined
@@ -132,6 +138,7 @@ export async function PATCH(req: Request, context: RouteContext) {
 
   const existing = await getPropertyEmailSettings(orgId, propertyObjectId);
   const nextFrom = fromEmail !== undefined ? fromEmail.trim() : (existing?.fromEmail ?? "").trim();
+  const nextCc = ccEmail !== undefined ? ccEmail.trim() : (existing?.ccEmail ?? "").trim();
   const willHaveKey =
     resendApiKey !== undefined
       ? resendApiKey !== null && resendApiKey.trim() !== ""
@@ -143,11 +150,15 @@ export async function PATCH(req: Request, context: RouteContext) {
       { status: 400 },
     );
   }
+  if (nextCc && !isValidEmail(nextCc)) {
+    return NextResponse.json({ error: "ccEmail must be a valid email address." }, { status: 400 });
+  }
 
   try {
     const updated = await upsertPropertyEmailSettings(orgId, propertyObjectId, {
       resendApiKey,
       fromEmail: fromEmail !== undefined ? fromEmail.trim() : undefined,
+      ccEmail: ccEmail !== undefined ? ccEmail.trim() : undefined,
       notifyOnConfirmation,
       notifyOnUpdate,
       notifyOnCancellation,
