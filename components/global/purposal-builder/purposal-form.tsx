@@ -119,12 +119,11 @@ export function PurposalForm({ value, onChange, rooms, bookingOptions }: Purposa
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label>Room rate (per night)</Label>
-          <Input type="number" min={0} value={value.roomRatePerNight} onChange={setNum("roomRatePerNight")} />
-        </div>
-        <div className="space-y-1.5">
           <Label>B2B rate (per person/night)</Label>
           <Input type="number" min={0} value={value.b2bRatePerPersonNight} onChange={setNum("b2bRatePerPersonNight")} />
+        </div>
+        <div className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          Room rates are auto-picked from the selected property room pricing.
         </div>
       </div>
 
