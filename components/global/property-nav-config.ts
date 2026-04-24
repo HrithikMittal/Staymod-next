@@ -3,6 +3,7 @@ import {
   BedDoubleIcon,
   CalendarRangeIcon,
   ClipboardListIcon,
+  FilePenLineIcon,
   HandCoinsIcon,
   LayoutDashboardIcon,
   PlugZapIcon,
@@ -74,6 +75,14 @@ export function getPropertyNavItems(propertyId: string): PropertyNavItem[] {
       shortLabel: "Tags",
       icon: TagsIcon,
       match: (pathname, id) => pathname.startsWith(`/${id}/room-tags`),
+    },
+    {
+      id: "purposal_builder",
+      href: `${base}/purposal-builder`,
+      label: "Purposal builder",
+      shortLabel: "Purposal",
+      icon: FilePenLineIcon,
+      match: (pathname, id) => pathname.startsWith(`/${id}/purposal-builder`),
     },
     {
       id: "team",
