@@ -28,6 +28,7 @@ import {
   TagIcon,
   type LucideIcon,
 } from "lucide-react";
+import { motion } from "framer-motion";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -166,7 +167,12 @@ export function PropertyDashboardPage() {
         <>
           <section>
             <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">At a glance</h2>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <motion.div
+              variants={containerVariants}
+              initial="hidden"
+              animate="show"
+              className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+            >
               <MetricCard
                 icon={CalendarClockIcon}
                 label="Upcoming (7 days)"
@@ -191,8 +197,13 @@ export function PropertyDashboardPage() {
                 value={metrics.departuresToday}
                 hint="Guests checking out today"
               />
-            </div>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            </motion.div>
+            <motion.div
+              variants={containerVariants}
+              initial="hidden"
+              animate="show"
+              className="mt-3 grid gap-3 sm:grid-cols-2"
+            >
               <MetricCard
                 icon={BedDoubleIcon}
                 label="Room inventory"
@@ -207,7 +218,7 @@ export function PropertyDashboardPage() {
                 hint="Sum of advance amounts on bookings created this calendar month"
                 valueClassName="text-lg tabular-nums"
               />
-            </div>
+            </motion.div>
           </section>
 
           <section className="grid gap-6 lg:grid-cols-2">
@@ -222,13 +233,13 @@ export function PropertyDashboardPage() {
                   <ArrowRightIcon className="size-3.5" />
                 </Link>
               </div>
-              <div className="overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm">
+              <div className="overflow-hidden rounded-lg border border-border/50 bg-card shadow-[0_0_0_1px_oklch(1_0_0_/_0.02),_0_4px_12px_oklch(0_0_0_/_0.2)]">
                 {upcomingArrivals.length === 0 ? (
                   <p className="px-4 py-8 text-sm text-muted-foreground">No upcoming arrivals.</p>
                 ) : (
-                  <ul className="divide-y divide-border/60">
+                  <ul className="divide-y divide-border/40">
                     {upcomingArrivals.map((b) => (
-                      <li key={b._id} className="flex flex-col gap-0.5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                      <li key={b._id} className="flex flex-col gap-0.5 px-4 py-3 transition-colors hover:bg-muted/20 sm:flex-row sm:items-center sm:justify-between">
                         <div className="min-w-0">
                           <p className="truncate font-medium">{b.guestName}</p>
                           <p className="truncate text-xs text-muted-foreground">
@@ -306,6 +317,20 @@ export function PropertyDashboardPage() {
   );
 }
 
+const cardVariants = {
+  hidden: { opacity: 0, y: 12 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] as const },
+  },
+};
+
+const containerVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.07 } },
+};
+
 function MetricCard({
   icon: Icon,
   label,
@@ -320,9 +345,12 @@ function MetricCard({
   valueClassName?: string;
 }) {
   return (
-    <div className="rounded-xl border border-border/60 bg-muted/20 px-4 py-3 shadow-sm">
-      <div className="flex items-start gap-2">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-background/80 text-muted-foreground">
+    <motion.div
+      variants={cardVariants}
+      className="group rounded-xl border border-border/50 bg-card px-4 py-3.5 shadow-sm transition-all duration-200 hover:border-border/80 hover:shadow-[0_0_0_1px_oklch(1_0_0_/_0.04),_0_8px_24px_oklch(0_0_0_/_0.25)]"
+    >
+      <div className="flex items-start gap-3">
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border/50 bg-muted/50 text-muted-foreground transition-colors duration-200 group-hover:border-primary/20 group-hover:bg-primary/8 group-hover:text-primary">
           <Icon className="size-4" strokeWidth={1.5} />
         </div>
         <div className="min-w-0 flex-1">
@@ -331,7 +359,7 @@ function MetricCard({
           <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{hint}</p>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -345,13 +373,15 @@ function ShortcutLink({
   label: string;
 }) {
   return (
-    <Link
-      href={href}
-      className="inline-flex items-center gap-2 rounded-lg border border-border/60 bg-background px-3 py-2 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-muted/40"
-    >
-      <Icon className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.5} />
-      <span className="min-w-0 flex-1">{label}</span>
-      <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground/70" aria-hidden />
-    </Link>
+    <motion.div whileHover={{ y: -1 }} transition={{ duration: 0.15 }}>
+      <Link
+        href={href}
+        className="inline-flex items-center gap-2 rounded-lg border border-border/50 bg-card px-3 py-2 text-sm font-medium text-foreground shadow-sm transition-all duration-150 hover:border-border/80 hover:bg-muted/30 hover:shadow-md"
+      >
+        <Icon className="size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" strokeWidth={1.5} />
+        <span className="min-w-0 flex-1">{label}</span>
+        <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground/50" aria-hidden />
+      </Link>
+    </motion.div>
   );
 }

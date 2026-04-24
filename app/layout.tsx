@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 
 import { AppProviders } from "@/components/global";
+import { ThemeProvider } from "next-themes";
 
 import "./globals.css";
 
@@ -31,18 +32,21 @@ export default function RootLayout({
       <html
         lang="en"
         className={`${inter.variable} ${mono.variable} h-full antialiased`}
+        suppressHydrationWarning
       >
         <body className="h-[100dvh] min-h-full overflow-hidden flex flex-col bg-background text-foreground">
-        <ClerkProvider
-          ui={ui}
-          taskUrls={{
-            "choose-organization": "/session-tasks/choose-organization",
-          }}
-        >
-          <AppProviders>
-            <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
-          </AppProviders>
-          </ClerkProvider>
+          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
+            <ClerkProvider
+              ui={ui}
+              taskUrls={{
+                "choose-organization": "/session-tasks/choose-organization",
+              }}
+            >
+              <AppProviders>
+                <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
+              </AppProviders>
+            </ClerkProvider>
+          </ThemeProvider>
         </body>
       </html>
   );

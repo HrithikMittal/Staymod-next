@@ -10,7 +10,7 @@ export function PropertiesEmptyState({ onAdd }: PropertiesEmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center gap-5 px-6 py-16 text-center">
       <div
-        className="flex size-14 items-center justify-center rounded-2xl bg-muted text-muted-foreground"
+        className="flex size-14 items-center justify-center rounded-2xl border border-border/50 bg-muted/50 text-muted-foreground"
         aria-hidden
       >
         <Building2Icon className="size-7" />

@@ -27,7 +27,8 @@ export function PropertyMobileNav({ propertyId }: PropertyMobileNavProps) {
     <>
       <nav
         className={cn(
-          "fixed right-0 bottom-0 left-0 z-40 flex border-t border-border/80 bg-background/95 pb-[max(0.35rem,env(safe-area-inset-bottom))] backdrop-blur-md md:hidden",
+          "fixed right-0 bottom-0 left-0 z-40 flex border-t border-border/40 bg-background/85 pb-[max(0.35rem,env(safe-area-inset-bottom))] backdrop-blur-xl md:hidden",
+          "shadow-[0_-1px_0_0_oklch(1_0_0_/_0.04),_0_-8px_24px_oklch(0_0_0_/_0.2)]",
         )}
         aria-label="Property navigation"
       >
@@ -75,11 +76,11 @@ export function PropertyMobileNav({ propertyId }: PropertyMobileNavProps) {
       </nav>
 
       <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
-        <SheetContent side="bottom" className="max-h-[min(85vh,560px)] gap-0 overflow-hidden rounded-t-2xl p-0">
-          <SheetHeader className="border-b border-border/60 px-4 pt-4 pb-3 text-left">
+        <SheetContent side="bottom" className="max-h-[min(85vh,560px)] gap-0 overflow-hidden rounded-t-2xl border-border/50 bg-card p-0 shadow-[0_-8px_40px_oklch(0_0_0_/_0.5)]">
+          <SheetHeader className="border-b border-border/40 px-4 pt-4 pb-3 text-left">
             <SheetTitle className="text-base">Menu</SheetTitle>
           </SheetHeader>
-          <div className="border-b border-border/60 px-4 py-3">
+          <div className="border-b border-border/40 px-4 py-3">
             <PropertyHeaderSwitcher propertyId={propertyId} />
           </div>
           <nav aria-label="Additional property pages" className="overflow-y-auto px-2 py-2">
@@ -93,10 +94,10 @@ export function PropertyMobileNav({ propertyId }: PropertyMobileNavProps) {
                       onClick={() => setMoreOpen(false)}
                       aria-current={active ? "page" : undefined}
                       className={cn(
-                        "flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium",
+                        "flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors duration-150",
                         active
-                          ? "bg-primary/10 text-primary"
-                          : "text-foreground hover:bg-muted/80",
+                          ? "bg-primary/12 text-primary"
+                          : "text-foreground hover:bg-muted/50",
                       )}
                     >
                       <Icon className="size-5 shrink-0 opacity-80" strokeWidth={1.75} aria-hidden />
@@ -107,7 +108,7 @@ export function PropertyMobileNav({ propertyId }: PropertyMobileNavProps) {
               })}
             </ul>
           </nav>
-          <div className="mt-auto border-t border-border/60 bg-muted/20 px-2 py-2">
+          <div className="mt-auto border-t border-border/40 bg-muted/10 px-2 py-2">
             <PropertySidebarFooter collapsed={false} />
           </div>
         </SheetContent>

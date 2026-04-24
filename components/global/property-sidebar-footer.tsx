@@ -1,6 +1,9 @@
 "use client";
 
 import { UserButton, useUser } from "@clerk/nextjs";
+import { MoonIcon, SunIcon } from "lucide-react";
+import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -35,6 +38,12 @@ type PropertySidebarFooterProps = {
 
 export function PropertySidebarFooter({ collapsed = false }: PropertySidebarFooterProps) {
   const { user, isLoaded } = useUser();
+  const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const isDark = resolvedTheme === "dark";
+  const toggleTheme = () => setTheme(isDark ? "light" : "dark");
 
   if (!isLoaded || !user) {
     return null;
@@ -50,6 +59,31 @@ export function PropertySidebarFooter({ collapsed = false }: PropertySidebarFoot
         collapsed ? "px-2" : "pr-2 pl-3",
       )}
     >
+      {/* Theme toggle — only render after mount so resolvedTheme is known */}
+      {mounted && (
+        <div className={cn("mb-2", collapsed ? "flex justify-center" : "")}>
+          <button
+            type="button"
+            onClick={toggleTheme}
+            aria-label="Toggle theme"
+            className={cn(
+              "flex items-center gap-2 rounded-md text-xs font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground",
+              collapsed ? "size-8 justify-center p-0" : "h-7 w-full px-2",
+            )}
+          >
+            {isDark ? (
+              <SunIcon className="size-3.5" aria-hidden />
+            ) : (
+              <MoonIcon className="size-3.5" aria-hidden />
+            )}
+            {!collapsed && (
+              <span>{isDark ? "Light mode" : "Dark mode"}</span>
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* User */}
       <div
         className={cn(
           "flex min-h-8 items-center gap-2.5",

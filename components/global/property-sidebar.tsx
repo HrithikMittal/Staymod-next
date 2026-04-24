@@ -99,10 +99,10 @@ export function PropertySidebar({ propertyId }: PropertySidebarProps) {
               "group relative flex items-center overflow-hidden rounded-md py-2",
               collapsed ? "justify-center px-0" : "gap-2.5 pr-2 pl-2",
               "text-[13px] font-medium leading-none tracking-[-0.01em]",
-              "transition-[background-color,color,box-shadow] duration-200 ease-out",
-              "text-sidebar-foreground/75 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
+              "transition-all duration-150 ease-out",
+              "text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground",
               active &&
-                "bg-sidebar-accent text-sidebar-foreground shadow-[inset_0_0_0_1px_oklch(0_0_0_/0.05)] hover:bg-sidebar-accent",
+                "bg-sidebar-accent text-sidebar-foreground shadow-[inset_0_0_0_1px_oklch(1_0_0_/0.06)] hover:bg-sidebar-accent",
             );
 
             const bar = (
