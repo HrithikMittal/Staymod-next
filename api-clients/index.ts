@@ -70,3 +70,11 @@ export {
   type ListCustomersResponse,
   type UpsertCustomerPayload,
 } from "./customers";
+export {
+  createCheckinUploadUrl,
+  fetchBookingCheckin,
+  saveBookingCheckin,
+  type BookingCheckinResponse,
+  type CheckinGuestPayload,
+  type UploadedIdentity,
+} from "./check-in";

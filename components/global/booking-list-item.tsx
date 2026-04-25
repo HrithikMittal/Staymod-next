@@ -9,7 +9,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { CalendarIcon, MailIcon, MoreHorizontalIcon, PencilIcon, UserIcon } from "lucide-react";
+import {
+  CalendarIcon,
+  CheckCheckIcon,
+  CircleXIcon,
+  MailIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  UserIcon,
+} from "lucide-react";
 import { formatMoney } from "@/utils/booking-pricing";
 
 function formatRange(checkIn: string, checkOut: string) {
@@ -23,6 +31,10 @@ function statusClass(status: string) {
   switch (status) {
     case "confirmed":
       return "bg-emerald-500";
+    case "checked_in":
+      return "bg-sky-500";
+    case "completed":
+      return "bg-indigo-500";
     case "pending":
       return "bg-amber-500";
     case "cancelled":
@@ -43,6 +55,11 @@ type BookingListItemRowProps = {
   onEdit: (booking: BookingListItem) => void;
   onResendConfirmation?: () => void;
   resendConfirmationPending?: boolean;
+  onCheckIn?: () => void;
+  onMarkCompleted?: () => void;
+  markCompletedPending?: boolean;
+  onCancelBooking?: () => void;
+  cancelBookingPending?: boolean;
 };
 
 export function BookingListItemRow({
@@ -54,10 +71,27 @@ export function BookingListItemRow({
   onEdit,
   onResendConfirmation,
   resendConfirmationPending,
+  onCheckIn,
+  onMarkCompleted,
+  markCompletedPending,
+  onCancelBooking,
+  cancelBookingPending,
 }: BookingListItemRowProps) {
   const statusLabel = booking.status.replace(/_/g, " ");
   const canResendConfirmation =
     booking.status === "confirmed" && Boolean(booking.guestEmail?.trim()) && onResendConfirmation;
+  const canCheckIn =
+    booking.status !== "checked_in" &&
+    booking.status !== "completed" &&
+    booking.status !== "cancelled" &&
+    booking.status !== "no_show" &&
+    Boolean(onCheckIn);
+  const canMarkCompleted =
+    booking.status === "checked_in" &&
+    Boolean(onMarkCompleted);
+  const canCancelBooking =
+    (booking.status === "pending" || booking.status === "confirmed") &&
+    Boolean(onCancelBooking);
 
   return (
     <li className="border-border/60 border-b last:border-b-0">
@@ -124,6 +158,24 @@ export function BookingListItemRow({
                 <PencilIcon className="size-4" />
                 Edit
               </DropdownMenuItem>
+              {canCheckIn ? (
+                <DropdownMenuItem onClick={() => onCheckIn?.()}>
+                  <CheckCheckIcon className="size-4" />
+                  Check in
+                </DropdownMenuItem>
+              ) : null}
+              {canMarkCompleted ? (
+                <DropdownMenuItem onClick={() => onMarkCompleted?.()} disabled={markCompletedPending}>
+                  <CheckCheckIcon className="size-4" />
+                  Check out / Mark completed
+                </DropdownMenuItem>
+              ) : null}
+              {canCancelBooking ? (
+                <DropdownMenuItem onClick={() => onCancelBooking?.()} disabled={cancelBookingPending}>
+                  <CircleXIcon className="size-4" />
+                  Cancel booking
+                </DropdownMenuItem>
+              ) : null}
               {canResendConfirmation ? (
                 <DropdownMenuItem
                   onClick={() => onResendConfirmation()}

@@ -68,6 +68,10 @@ function statusClass(status: string) {
   switch (status) {
     case "confirmed":
       return "bg-emerald-500";
+    case "checked_in":
+      return "bg-sky-500";
+    case "completed":
+      return "bg-indigo-500";
     case "pending":
       return "bg-amber-500";
     case "cancelled":

@@ -7,7 +7,14 @@ import type { RoomType } from "@/types/room";
 /** MongoDB collection name for reservations. */
 export const BOOKINGS_COLLECTION = "bookings" as const;
 
-export const BOOKING_STATUSES = ["pending", "confirmed", "cancelled", "no_show"] as const;
+export const BOOKING_STATUSES = [
+  "pending",
+  "confirmed",
+  "checked_in",
+  "completed",
+  "cancelled",
+  "no_show",
+] as const;
 
 export type BookingStatus = (typeof BOOKING_STATUSES)[number];
 

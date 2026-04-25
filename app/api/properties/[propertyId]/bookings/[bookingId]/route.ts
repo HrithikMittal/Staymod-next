@@ -24,6 +24,20 @@ type RouteContext = {
   params: Promise<{ propertyId: string; bookingId: string }>;
 };
 
+export async function GET(_req: Request, context: RouteContext) {
+  const orgId = await getActiveOrganizationId();
+  if (!orgId) {
+    return NextResponse.json({ error: "Organization is required." }, { status: 401 });
+  }
+
+  const { propertyId, bookingId } = await context.params;
+  const resolved = await resolveBookingContext(orgId, propertyId, bookingId);
+  if ("error" in resolved) {
+    return resolved.error;
+  }
+  return NextResponse.json({ booking: serializeBooking(resolved.existing) });
+}
+
 async function loadBookableRoom(
   db: Awaited<ReturnType<typeof getDb>>,
   orgId: string,

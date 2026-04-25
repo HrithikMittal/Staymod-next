@@ -12,6 +12,7 @@ type BookingDetailsDialogProps = {
   roomAmount: number;
   onOpenChange: (open: boolean) => void;
   onEdit: (booking: BookingListItem) => void;
+  onCheckIn: (booking: BookingListItem) => void;
 };
 
 function formatRange(checkIn: string, checkOut: string) {
@@ -28,6 +29,7 @@ export function BookingDetailsDialog({
   roomAmount,
   onOpenChange,
   onEdit,
+  onCheckIn,
 }: BookingDetailsDialogProps) {
   const nights = booking ? Math.max(1, calculateNightsCount(booking.checkIn, booking.checkOut)) : 1;
   const optionsTotal = (booking?.selectedOptions ?? []).reduce(
@@ -110,15 +112,27 @@ export function BookingDetailsDialog({
 
         <DialogFooter showCloseButton>
           {booking ? (
-            <Button
-              type="button"
-              onClick={() => {
-                onOpenChange(false);
-                onEdit(booking);
-              }}
-            >
-              Edit booking
-            </Button>
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  onOpenChange(false);
+                  onCheckIn(booking);
+                }}
+              >
+                Check in
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  onOpenChange(false);
+                  onEdit(booking);
+                }}
+              >
+                Edit booking
+              </Button>
+            </>
           ) : null}
         </DialogFooter>
       </DialogContent>

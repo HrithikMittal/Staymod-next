@@ -1,7 +1,7 @@
 "use client";
 
 import type { BookingListItem, ListBookingsResponse } from "@/api-clients/bookings";
-import { resendConfirmationEmail } from "@/api-clients/bookings";
+import { resendConfirmationEmail, updateBooking } from "@/api-clients/bookings";
 import { BookingDetailsDialog } from "@/components/global/booking-details-dialog";
 import type { ListRoomsResponse, RoomListItem } from "@/api-clients/rooms";
 import { BookingListItemRow } from "@/components/global/booking-list-item";
@@ -10,12 +10,13 @@ import { Button } from "@/components/ui/button";
 import { useApiQuery } from "@/hooks";
 import { PlusIcon } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { calculateBookingAmount } from "@/utils/booking-pricing";
 
 export function PropertyBookingsPage() {
   const params = useParams();
+  const router = useRouter();
   const propertyId = typeof params.id === "string" ? params.id : "";
 
   const [dialog, setDialog] = useState<{
@@ -28,6 +29,7 @@ export function PropertyBookingsPage() {
     roomAmount: number;
   }>({ open: false, booking: null, roomAmount: 0 });
   const [resendNotice, setResendNotice] = useState<string | null>(null);
+  const [statusNotice, setStatusNotice] = useState<string | null>(null);
 
   const resendMutation = useMutation({
     mutationFn: (bookingId: string) => resendConfirmationEmail(propertyId, bookingId),
@@ -39,11 +41,41 @@ export function PropertyBookingsPage() {
     },
   });
 
+  const markCompletedMutation = useMutation({
+    mutationFn: ({ bookingId, payload }: { bookingId: string; payload: Parameters<typeof updateBooking>[2] }) =>
+      updateBooking(propertyId, bookingId, payload),
+    onSuccess: () => {
+      setStatusNotice("Booking marked as completed.");
+      void bookingsQuery.refetch();
+    },
+    onError: () => {
+      setStatusNotice(null);
+    },
+  });
+
+  const cancelBookingMutation = useMutation({
+    mutationFn: ({ bookingId, payload }: { bookingId: string; payload: Parameters<typeof updateBooking>[2] }) =>
+      updateBooking(propertyId, bookingId, payload),
+    onSuccess: () => {
+      setStatusNotice("Booking cancelled.");
+      void bookingsQuery.refetch();
+    },
+    onError: () => {
+      setStatusNotice(null);
+    },
+  });
+
   useEffect(() => {
     if (!resendNotice) return;
     const t = window.setTimeout(() => setResendNotice(null), 4000);
     return () => window.clearTimeout(t);
   }, [resendNotice]);
+
+  useEffect(() => {
+    if (!statusNotice) return;
+    const t = window.setTimeout(() => setStatusNotice(null), 4000);
+    return () => window.clearTimeout(t);
+  }, [statusNotice]);
 
   const bookingsQuery = useApiQuery<ListBookingsResponse>(
     ["bookings", propertyId],
@@ -113,9 +145,24 @@ export function PropertyBookingsPage() {
               {resendNotice}
             </p>
           ) : null}
+          {statusNotice ? (
+            <p className="text-sm text-emerald-600 dark:text-emerald-400" role="status">
+              {statusNotice}
+            </p>
+          ) : null}
           {resendMutation.isError ? (
             <p className="text-sm text-destructive" role="alert">
               {resendMutation.error.message}
+            </p>
+          ) : null}
+          {markCompletedMutation.isError ? (
+            <p className="text-sm text-destructive" role="alert">
+              {markCompletedMutation.error.message}
+            </p>
+          ) : null}
+          {cancelBookingMutation.isError ? (
+            <p className="text-sm text-destructive" role="alert">
+              {cancelBookingMutation.error.message}
             </p>
           ) : null}
         </div>
@@ -185,6 +232,69 @@ export function PropertyBookingsPage() {
                   resendMutation.isPending && resendMutation.variables === b._id
                 }
                 onResendConfirmation={() => resendMutation.mutate(b._id)}
+                onCheckIn={() => router.push(`/${propertyId}/bookings/${b._id}/check-in`)}
+                markCompletedPending={
+                  markCompletedMutation.isPending && markCompletedMutation.variables?.bookingId === b._id
+                }
+                onMarkCompleted={() =>
+                  markCompletedMutation.mutate({
+                    bookingId: b._id,
+                    payload: {
+                      guestName: b.guestName,
+                      guestEmail: b.guestEmail,
+                      guestPhone: b.guestPhone,
+                      specialRequests: b.specialRequests,
+                      checkIn: b.checkIn,
+                      checkOut: b.checkOut,
+                      numberOfGuests: b.numberOfGuests,
+                      selectedOptions: b.selectedOptions,
+                      customItems: b.customItems,
+                      discount: b.discount,
+                      advanceAmount: b.advanceAmount,
+                      rooms: Object.fromEntries(
+                        Object.entries(b.rooms).map(([roomId, row]) => [
+                          roomId,
+                          {
+                            quantity: row.quantity,
+                            roomNumbers: row.roomNumbers,
+                          },
+                        ]),
+                      ),
+                      status: "completed",
+                    },
+                  })
+                }
+                cancelBookingPending={
+                  cancelBookingMutation.isPending && cancelBookingMutation.variables?.bookingId === b._id
+                }
+                onCancelBooking={() =>
+                  cancelBookingMutation.mutate({
+                    bookingId: b._id,
+                    payload: {
+                      guestName: b.guestName,
+                      guestEmail: b.guestEmail,
+                      guestPhone: b.guestPhone,
+                      specialRequests: b.specialRequests,
+                      checkIn: b.checkIn,
+                      checkOut: b.checkOut,
+                      numberOfGuests: b.numberOfGuests,
+                      selectedOptions: b.selectedOptions,
+                      customItems: b.customItems,
+                      discount: b.discount,
+                      advanceAmount: b.advanceAmount,
+                      rooms: Object.fromEntries(
+                        Object.entries(b.rooms).map(([roomId, row]) => [
+                          roomId,
+                          {
+                            quantity: row.quantity,
+                            roomNumbers: row.roomNumbers,
+                          },
+                        ]),
+                      ),
+                      status: "cancelled",
+                    },
+                  })
+                }
               />
               );
             })}
@@ -229,6 +339,9 @@ export function PropertyBookingsPage() {
           }
         }}
         onEdit={openEdit}
+        onCheckIn={(booking) => {
+          router.push(`/${propertyId}/bookings/${booking._id}/check-in`);
+        }}
       />
     </main>
   );

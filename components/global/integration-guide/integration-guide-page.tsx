@@ -262,7 +262,7 @@ export function IntegrationGuidePage({ publicApiBaseUrl }: IntegrationGuidePageP
           <GuideSection
             id="post-create-booking"
             title="POST — Create booking"
-            description="Scope: bookings:write. Guest fields, ISO checkIn/checkOut, and rooms (array items: roomId, quantity, optional roomNumbers). Optional status enum: pending | confirmed | cancelled | no_show (default: pending). Optional advanceAmount, selectedOptions, customItems. For selectedOptions, send full snapshot fields (bookingOptionId, name, appliesTo, frequency, pricePerUnit, quantity), not just the id."
+            description="Scope: bookings:write. Guest fields, ISO checkIn/checkOut, and rooms (array items: roomId, quantity, optional roomNumbers). Optional status enum: pending | confirmed | checked_in | completed | cancelled | no_show (default: pending). Optional advanceAmount, selectedOptions, customItems. For selectedOptions, send full snapshot fields (bookingOptionId, name, appliesTo, frequency, pricePerUnit, quantity), not just the id."
           >
             <CodeSample title="Example" code={createBookingExample} />
             <p className="mt-3 text-sm text-muted-foreground">

@@ -57,7 +57,7 @@ export type CreateBookingPayload = {
   quantity?: number;
   roomNumbers?: string[];
   advanceAmount?: number;
-  status?: "pending" | "confirmed" | "cancelled" | "no_show";
+  status?: "pending" | "confirmed" | "checked_in" | "completed" | "cancelled" | "no_show";
 };
 
 export function fetchBookings(propertyId: string) {
@@ -79,6 +79,10 @@ export function updateBooking(propertyId: string, bookingId: string, payload: Cr
       json: payload,
     },
   );
+}
+
+export function fetchBooking(propertyId: string, bookingId: string) {
+  return apiFetch<{ booking: BookingListItem }>(`/api/properties/${propertyId}/bookings/${bookingId}`);
 }
 
 export function resendConfirmationEmail(propertyId: string, bookingId: string) {
