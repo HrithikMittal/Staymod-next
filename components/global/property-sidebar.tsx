@@ -1,13 +1,15 @@
 "use client";
 
 import {
+  ChevronDownIcon,
   PanelLeftCloseIcon,
   PanelLeftIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 
-import { getPropertyNavItems } from "@/components/global/property-nav-config";
+import { getGroupedPropertyNavItems } from "@/components/global/property-nav-config";
 import { PropertyHeaderSwitcher } from "@/components/global/property-header-switcher";
 import { PropertySidebarFooter } from "@/components/global/property-sidebar-footer";
 import { Button } from "@/components/ui/button";
@@ -21,8 +23,13 @@ type PropertySidebarProps = {
 
 export function PropertySidebar({ propertyId }: PropertySidebarProps) {
   const pathname = usePathname();
-  const items = getPropertyNavItems(propertyId);
+  const groups = getGroupedPropertyNavItems(propertyId);
   const { collapsed, toggleCollapsed } = usePropertySidebarCollapsed();
+  const [groupOpen, setGroupOpen] = useState<Record<string, boolean>>({
+    daily: true,
+    setup: true,
+    admin: true,
+  });
 
   return (
     <aside
@@ -92,66 +99,92 @@ export function PropertySidebar({ propertyId }: PropertySidebarProps) {
         ) : null}
       </div>
       <div className={cn("flex min-h-0 flex-1 flex-col gap-1 overflow-auto py-4", collapsed ? "px-1.5" : "px-2")}>
-        <nav aria-label="Property" className="flex flex-col gap-1">
-          {items.map(({ href, label, icon: Icon, match }) => {
-            const active = match(pathname, propertyId);
-            const linkClass = cn(
-              "group relative flex items-center overflow-hidden rounded-md py-2",
-              collapsed ? "justify-center px-0" : "gap-2.5 pr-2 pl-2",
-              "text-[13px] font-medium leading-none tracking-[-0.01em]",
-              "transition-all duration-150 ease-out",
-              "text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground",
-              active &&
-                "bg-sidebar-accent text-sidebar-foreground shadow-[inset_0_0_0_1px_oklch(1_0_0_/0.06)] hover:bg-sidebar-accent",
-            );
-
-            const bar = (
-              <span
-                aria-hidden
-                className={cn(
-                  "absolute top-1/2 left-0 h-5 w-[2px] -translate-y-1/2 rounded-r-full bg-primary",
-                  "origin-center transition-[opacity,transform] duration-200 ease-out",
-                  active ? "opacity-100 scale-y-100" : "opacity-0 scale-y-0",
-                )}
-              />
-            );
-
-            const icon = (
-              <Icon
-                className={cn(
-                  "relative size-[15px] shrink-0 stroke-[1.75] transition-transform duration-200 ease-out",
-                  "text-muted-foreground group-hover:text-sidebar-foreground",
-                  active && "text-sidebar-foreground",
-                  "group-hover:translate-x-[0.5px]",
-                )}
-                aria-hidden
-              />
-            );
-
-            return (
-              <Tooltip key={href} disabled={!collapsed}>
-                <TooltipTrigger
-                  render={
-                    <Link
-                      href={href}
-                      aria-current={active ? "page" : undefined}
-                      aria-label={collapsed ? label : undefined}
-                      className={linkClass}
-                    />
+        <nav aria-label="Property" className="flex flex-col gap-3">
+          {groups.map((group) => (
+            <div key={group.id} className="flex flex-col gap-1">
+              {!collapsed ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setGroupOpen((prev) => ({
+                      ...prev,
+                      [group.id]: !(prev[group.id] ?? true),
+                    }))
                   }
+                  className="flex items-center justify-between rounded-md px-2 py-1 text-[10px] font-semibold tracking-[0.12em] text-sidebar-foreground/45 uppercase hover:bg-sidebar-accent/60 hover:text-sidebar-foreground/70"
                 >
-                  {bar}
-                  {icon}
-                  {!collapsed ? (
-                    <span className="relative min-w-0 flex-1 truncate">{label}</span>
-                  ) : null}
-                </TooltipTrigger>
-                <TooltipContent side="right" sideOffset={8}>
-                  {label}
-                </TooltipContent>
-              </Tooltip>
-            );
-          })}
+                  <span>{group.label}</span>
+                  <ChevronDownIcon
+                    className={cn(
+                      "size-3 transition-transform",
+                      (groupOpen[group.id] ?? true) ? "rotate-0" : "-rotate-90",
+                    )}
+                    aria-hidden
+                  />
+                </button>
+              ) : null}
+              {(collapsed || (groupOpen[group.id] ?? true)) &&
+                group.items.map(({ href, label, icon: Icon, match }) => {
+                const active = match(pathname, propertyId);
+                const linkClass = cn(
+                  "group relative flex items-center overflow-hidden rounded-md py-2",
+                  collapsed ? "justify-center px-0" : "gap-2.5 pr-2 pl-2",
+                  "text-[13px] font-medium leading-none tracking-[-0.01em]",
+                  "transition-all duration-150 ease-out",
+                  "text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                  active &&
+                    "bg-sidebar-accent text-sidebar-foreground shadow-[inset_0_0_0_1px_oklch(1_0_0_/0.06)] hover:bg-sidebar-accent",
+                );
+
+                const bar = (
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "absolute top-1/2 left-0 h-5 w-[2px] -translate-y-1/2 rounded-r-full bg-primary",
+                      "origin-center transition-[opacity,transform] duration-200 ease-out",
+                      active ? "opacity-100 scale-y-100" : "opacity-0 scale-y-0",
+                    )}
+                  />
+                );
+
+                const icon = (
+                  <Icon
+                    className={cn(
+                      "relative size-[15px] shrink-0 stroke-[1.75] transition-transform duration-200 ease-out",
+                      "text-muted-foreground group-hover:text-sidebar-foreground",
+                      active && "text-sidebar-foreground",
+                      "group-hover:translate-x-[0.5px]",
+                    )}
+                    aria-hidden
+                  />
+                );
+
+                return (
+                  <Tooltip key={href} disabled={!collapsed}>
+                    <TooltipTrigger
+                      render={
+                        <Link
+                          href={href}
+                          aria-current={active ? "page" : undefined}
+                          aria-label={collapsed ? label : undefined}
+                          className={linkClass}
+                        />
+                      }
+                    >
+                      {bar}
+                      {icon}
+                      {!collapsed ? (
+                        <span className="relative min-w-0 flex-1 truncate">{label}</span>
+                      ) : null}
+                    </TooltipTrigger>
+                    <TooltipContent side="right" sideOffset={8}>
+                      {label}
+                    </TooltipContent>
+                  </Tooltip>
+                );
+                })}
+            </div>
+          ))}
         </nav>
       </div>
       <PropertySidebarFooter collapsed={collapsed} />

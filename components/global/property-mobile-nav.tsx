@@ -1,12 +1,16 @@
 "use client";
 
-import { MenuIcon } from "lucide-react";
+import { ChevronDownIcon, MenuIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 import { PropertyHeaderSwitcher } from "@/components/global/property-header-switcher";
-import { getMobileBottomNavItems, getMoreMenuNavItems } from "@/components/global/property-nav-config";
+import {
+  getGroupedMoreMenuNavItems,
+  getMobileBottomNavItems,
+  getMoreMenuNavItems,
+} from "@/components/global/property-nav-config";
 import { PropertySidebarFooter } from "@/components/global/property-sidebar-footer";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
@@ -18,9 +22,15 @@ type PropertyMobileNavProps = {
 export function PropertyMobileNav({ propertyId }: PropertyMobileNavProps) {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
+  const [groupOpen, setGroupOpen] = useState<Record<string, boolean>>({
+    daily: true,
+    setup: true,
+    admin: true,
+  });
 
   const bottomItems = getMobileBottomNavItems(propertyId);
   const moreItems = getMoreMenuNavItems(propertyId);
+  const groupedMoreItems = getGroupedMoreMenuNavItems(propertyId);
   const moreRouteActive = moreItems.some((item) => item.match(pathname, propertyId));
 
   return (
@@ -84,28 +94,55 @@ export function PropertyMobileNav({ propertyId }: PropertyMobileNavProps) {
             <PropertyHeaderSwitcher propertyId={propertyId} />
           </div>
           <nav aria-label="Additional property pages" className="overflow-y-auto px-2 py-2">
-            <ul className="flex flex-col gap-0.5">
-              {moreItems.map(({ id, href, label, icon: Icon, match }) => {
-                const active = match(pathname, propertyId);
-                return (
-                  <li key={id}>
-                    <Link
-                      href={href}
-                      onClick={() => setMoreOpen(false)}
-                      aria-current={active ? "page" : undefined}
+            <ul className="flex flex-col gap-3">
+              {groupedMoreItems.map((group) => (
+                <li key={group.id}>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setGroupOpen((prev) => ({
+                        ...prev,
+                        [group.id]: !(prev[group.id] ?? true),
+                      }))
+                    }
+                    className="flex w-full items-center justify-between rounded-md px-3 py-1 text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase hover:bg-muted/40"
+                  >
+                    <span>{group.label}</span>
+                    <ChevronDownIcon
                       className={cn(
-                        "flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors duration-150",
-                        active
-                          ? "bg-primary/12 text-primary"
-                          : "text-foreground hover:bg-muted/50",
+                        "size-3 transition-transform",
+                        (groupOpen[group.id] ?? true) ? "rotate-0" : "-rotate-90",
                       )}
-                    >
-                      <Icon className="size-5 shrink-0 opacity-80" strokeWidth={1.75} aria-hidden />
-                      {label}
-                    </Link>
-                  </li>
-                );
-              })}
+                      aria-hidden
+                    />
+                  </button>
+                  {(groupOpen[group.id] ?? true) ? (
+                    <ul className="flex flex-col gap-0.5">
+                      {group.items.map(({ id, href, label, icon: Icon, match }) => {
+                        const active = match(pathname, propertyId);
+                        return (
+                          <li key={id}>
+                            <Link
+                              href={href}
+                              onClick={() => setMoreOpen(false)}
+                              aria-current={active ? "page" : undefined}
+                              className={cn(
+                                "flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors duration-150",
+                                active
+                                  ? "bg-primary/12 text-primary"
+                                  : "text-foreground hover:bg-muted/50",
+                              )}
+                            >
+                              <Icon className="size-5 shrink-0 opacity-80" strokeWidth={1.75} aria-hidden />
+                              {label}
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : null}
+                </li>
+              ))}
             </ul>
           </nav>
           <div className="mt-auto border-t border-border/40 bg-muted/10 px-2 py-2">

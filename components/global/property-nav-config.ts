@@ -19,8 +19,15 @@ export type PropertyNavItem = {
   label: string;
   /** Compact label under icons on the mobile bottom bar */
   shortLabel: string;
+  group: "daily" | "setup" | "admin";
   icon: LucideIcon;
   match: (pathname: string, propertyId: string) => boolean;
+};
+
+export type PropertyNavGroup = {
+  id: "daily" | "setup" | "admin";
+  label: string;
+  items: PropertyNavItem[];
 };
 
 /** Primary destinations on the mobile bottom bar (remaining items live under “More”). */
@@ -34,38 +41,52 @@ export function getPropertyNavItems(propertyId: string): PropertyNavItem[] {
       href: `${base}/dashboard`,
       label: "Dashboard",
       shortLabel: "Home",
+      group: "daily",
       icon: LayoutDashboardIcon,
       match: (pathname, id) => pathname === `/${id}/dashboard`,
-    },
-    {
-      id: "rooms",
-      href: `${base}/rooms`,
-      label: "Rooms",
-      shortLabel: "Rooms",
-      icon: BedDoubleIcon,
-      match: (pathname, id) => pathname.startsWith(`/${id}/rooms`),
-    },
-    {
-      id: "room_availability",
-      href: `${base}/room-availability`,
-      label: "Room availability",
-      shortLabel: "Calendar",
-      icon: CalendarRangeIcon,
-      match: (pathname, id) => pathname.startsWith(`/${id}/room-availability`),
     },
     {
       id: "bookings",
       href: `${base}/bookings`,
       label: "Bookings",
       shortLabel: "Bookings",
+      group: "daily",
       icon: ClipboardListIcon,
       match: (pathname, id) => pathname.startsWith(`/${id}/bookings`),
+    },
+    {
+      id: "customers",
+      href: `${base}/customers`,
+      label: "Customers",
+      shortLabel: "Customers",
+      group: "daily",
+      icon: UserRoundIcon,
+      match: (pathname, id) => pathname.startsWith(`/${id}/customers`),
+    },
+    {
+      id: "room_availability",
+      href: `${base}/room-availability`,
+      label: "Room availability",
+      shortLabel: "Calendar",
+      group: "daily",
+      icon: CalendarRangeIcon,
+      match: (pathname, id) => pathname.startsWith(`/${id}/room-availability`),
+    },
+    {
+      id: "rooms",
+      href: `${base}/rooms`,
+      label: "Rooms",
+      shortLabel: "Rooms",
+      group: "setup",
+      icon: BedDoubleIcon,
+      match: (pathname, id) => pathname.startsWith(`/${id}/rooms`),
     },
     {
       id: "booking_options",
       href: `${base}/booking-options`,
       label: "Booking options",
       shortLabel: "Options",
+      group: "setup",
       icon: HandCoinsIcon,
       match: (pathname, id) => pathname.startsWith(`/${id}/booking-options`),
     },
@@ -74,6 +95,7 @@ export function getPropertyNavItems(propertyId: string): PropertyNavItem[] {
       href: `${base}/room-tags`,
       label: "Room tags",
       shortLabel: "Tags",
+      group: "setup",
       icon: TagsIcon,
       match: (pathname, id) => pathname.startsWith(`/${id}/room-tags`),
     },
@@ -82,30 +104,16 @@ export function getPropertyNavItems(propertyId: string): PropertyNavItem[] {
       href: `${base}/purposal-builder`,
       label: "Purposal builder",
       shortLabel: "Purposal",
+      group: "setup",
       icon: FilePenLineIcon,
       match: (pathname, id) => pathname.startsWith(`/${id}/purposal-builder`),
-    },
-    {
-      id: "customers",
-      href: `${base}/customers`,
-      label: "Customers",
-      shortLabel: "Customers",
-      icon: UserRoundIcon,
-      match: (pathname, id) => pathname.startsWith(`/${id}/customers`),
-    },
-    {
-      id: "team",
-      href: `${base}/team/organization-members`,
-      label: "Team",
-      shortLabel: "Team",
-      icon: UsersIcon,
-      match: (pathname, id) => pathname.startsWith(`/${id}/team`),
     },
     {
       id: "integrations",
       href: `${base}/integrations`,
       label: "Integrations",
       shortLabel: "API",
+      group: "admin",
       icon: PlugZapIcon,
       match: (pathname, id) => pathname.startsWith(`/${id}/integrations`),
     },
@@ -114,10 +122,33 @@ export function getPropertyNavItems(propertyId: string): PropertyNavItem[] {
       href: `${base}/settings`,
       label: "Property settings",
       shortLabel: "Settings",
+      group: "admin",
       icon: SettingsIcon,
       match: (pathname, id) => pathname.startsWith(`/${id}/settings`),
     },
+    {
+      id: "team",
+      href: `${base}/team/organization-members`,
+      label: "Team",
+      shortLabel: "Team",
+      group: "admin",
+      icon: UsersIcon,
+      match: (pathname, id) => pathname.startsWith(`/${id}/team`),
+    },
   ];
+}
+
+export function groupPropertyNavItems(items: PropertyNavItem[]): PropertyNavGroup[] {
+  const groups: PropertyNavGroup[] = [
+    { id: "daily", label: "Daily", items: [] },
+    { id: "setup", label: "Setup", items: [] },
+    { id: "admin", label: "Admin", items: [] },
+  ];
+  const byId = new Map(groups.map((group) => [group.id, group]));
+  for (const item of items) {
+    byId.get(item.group)?.items.push(item);
+  }
+  return groups.filter((group) => group.items.length > 0);
 }
 
 export function getMobileBottomNavItems(propertyId: string): PropertyNavItem[] {
@@ -131,4 +162,12 @@ export function getMoreMenuNavItems(propertyId: string): PropertyNavItem[] {
   const all = getPropertyNavItems(propertyId);
   const set = new Set<string>(MOBILE_BOTTOM_IDS);
   return all.filter((item) => !set.has(item.id));
+}
+
+export function getGroupedPropertyNavItems(propertyId: string): PropertyNavGroup[] {
+  return groupPropertyNavItems(getPropertyNavItems(propertyId));
+}
+
+export function getGroupedMoreMenuNavItems(propertyId: string): PropertyNavGroup[] {
+  return groupPropertyNavItems(getMoreMenuNavItems(propertyId));
 }
