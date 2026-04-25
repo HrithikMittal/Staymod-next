@@ -18,6 +18,7 @@ export function serializePublicBooking(b: Booking) {
     _id: b._id.toString(),
     orgId: b.orgId,
     propertyId: b.propertyId.toString(),
+    customerId: b.customerId?.toString(),
     guestName: b.guestName,
     guestEmail: b.guestEmail,
     guestPhone: b.guestPhone,

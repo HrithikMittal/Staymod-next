@@ -241,6 +241,7 @@ export function createBookingDocument(
   input: CreateBookingInput,
   orgId: string,
   roomMap: Record<string, Pick<Room, "type">>,
+  customerId?: ObjectId,
 ): Omit<Booking, "_id"> {
   const now = new Date();
   const rooms: BookingRoomsMap = Object.fromEntries(
@@ -264,6 +265,7 @@ export function createBookingDocument(
   const firstRoomType = roomMap[first.roomId.toString()]?.type;
   return {
     propertyId: input.propertyId,
+    customerId,
     guestName: input.guestName,
     guestEmail: input.guestEmail,
     guestPhone: input.guestPhone,

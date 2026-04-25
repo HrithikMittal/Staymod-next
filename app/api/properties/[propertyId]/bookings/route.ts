@@ -8,6 +8,7 @@ import type { Room } from "@/types/room";
 import { getActiveOrganizationId } from "@/utils/auth-org";
 import { getDb } from "@/utils/mongodb";
 import { queueBookingGuestEmailNotification } from "@/utils/booking-guest-email";
+import { findOrCreateCustomerForBooking } from "@/utils/customer-link";
 import {
   assertAvailabilityForBooking,
   applyBookingInventoryDeduction,
@@ -78,6 +79,7 @@ function serializeBooking(b: Booking) {
     _id: b._id.toString(),
     orgId: b.orgId,
     propertyId: b.propertyId.toString(),
+    customerId: b.customerId?.toString(),
     guestName: b.guestName,
     guestEmail: b.guestEmail,
     guestPhone: b.guestPhone,
@@ -183,7 +185,14 @@ export async function POST(req: Request, context: RouteContext) {
       }
     }
 
-    const doc = createBookingDocument(input, orgId, roomMap);
+    const customerId = await findOrCreateCustomerForBooking({
+      orgId,
+      propertyId: propertyObjectId,
+      guestEmail: input.guestEmail,
+      guestName: input.guestName,
+      guestPhone: input.guestPhone,
+    });
+    const doc = createBookingDocument(input, orgId, roomMap, customerId);
     const insertResult = await db.collection<Omit<Booking, "_id">>(BOOKINGS_COLLECTION).insertOne(doc);
 
     const created: Booking = { ...doc, _id: insertResult.insertedId };

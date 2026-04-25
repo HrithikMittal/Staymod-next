@@ -3,6 +3,7 @@ import { apiFetch } from "@/utils/api-fetch";
 export type BookingListItem = {
   _id: string;
   propertyId: string;
+  customerId?: string;
   orgId: string;
   rooms: Record<string, { roomType: string; quantity: number; roomNumbers?: string[] }>;
   guestName: string;

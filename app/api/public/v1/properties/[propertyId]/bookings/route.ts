@@ -7,6 +7,7 @@ import { getDb } from "@/utils/mongodb";
 import { serializePublicBooking } from "@/utils/public-booking-serialize";
 import { publicApiJsonResponse, publicApiOptionsResponse } from "@/utils/public-api-cors";
 import { queueBookingGuestEmailNotification } from "@/utils/booking-guest-email";
+import { findOrCreateCustomerForBooking } from "@/utils/customer-link";
 import { requirePublicApiAuth } from "@/utils/public-api-auth";
 import {
   applyBookingInventoryDeduction,
@@ -148,7 +149,14 @@ export async function POST(req: Request, context: RouteContext) {
       }
     }
 
-    const doc = createBookingDocument(input, orgId, roomMap);
+    const customerId = await findOrCreateCustomerForBooking({
+      orgId,
+      propertyId: propertyObjectId,
+      guestEmail: input.guestEmail,
+      guestName: input.guestName,
+      guestPhone: input.guestPhone,
+    });
+    const doc = createBookingDocument(input, orgId, roomMap, customerId);
     const insertResult = await db.collection<Omit<Booking, "_id">>(BOOKINGS_COLLECTION).insertOne(doc);
     const created: Booking = { ...doc, _id: insertResult.insertedId };
 

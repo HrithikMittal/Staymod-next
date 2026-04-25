@@ -6,6 +6,7 @@ import { BOOKINGS_COLLECTION } from "@/types/booking";
 import type { Property } from "@/types/property";
 import type { Room } from "@/types/room";
 import { queueBookingGuestEmailNotification } from "@/utils/booking-guest-email";
+import { findOrCreateCustomerForBooking } from "@/utils/customer-link";
 import { getActiveOrganizationId } from "@/utils/auth-org";
 import { getDb } from "@/utils/mongodb";
 import {
@@ -59,6 +60,7 @@ function serializeBooking(b: Booking) {
     _id: b._id.toString(),
     orgId: b.orgId,
     propertyId: b.propertyId.toString(),
+    customerId: b.customerId?.toString(),
     guestName: b.guestName,
     guestEmail: b.guestEmail,
     guestPhone: b.guestPhone,
@@ -179,7 +181,14 @@ export async function PATCH(req: Request, context: RouteContext) {
     }
 
     const now = new Date();
-    const nextDoc = createBookingDocument(input, orgId, roomMap);
+    const customerId = await findOrCreateCustomerForBooking({
+      orgId,
+      propertyId: propertyObjectId,
+      guestEmail: input.guestEmail,
+      guestName: input.guestName,
+      guestPhone: input.guestPhone,
+    });
+    const nextDoc = createBookingDocument(input, orgId, roomMap, customerId);
 
     await db.collection<Booking>(BOOKINGS_COLLECTION).updateOne(
       { _id: bookingObjectId },

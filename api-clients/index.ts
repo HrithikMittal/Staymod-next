@@ -61,3 +61,12 @@ export {
   type PatchEmailSettingsPayload,
   type PropertyEmailSettingsPublic,
 } from "./email-settings";
+export {
+  createCustomer,
+  deleteCustomer,
+  fetchCustomers,
+  updateCustomer,
+  type CustomerListItem,
+  type ListCustomersResponse,
+  type UpsertCustomerPayload,
+} from "./customers";

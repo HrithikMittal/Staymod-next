@@ -44,6 +44,7 @@ export type BookingCustomItem = {
 export type Booking = OrganizationScope & {
   _id: ObjectId;
   propertyId: ObjectId;
+  customerId?: ObjectId;
   /** Multi-room allocation map keyed by roomId. */
   rooms: BookingRoomsMap;
   /** @deprecated legacy single-room shape retained for backward compatibility. */

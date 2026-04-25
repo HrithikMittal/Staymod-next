@@ -9,6 +9,7 @@ import {
   PlugZapIcon,
   SettingsIcon,
   TagsIcon,
+  UserRoundIcon,
   UsersIcon,
 } from "lucide-react";
 
@@ -83,6 +84,14 @@ export function getPropertyNavItems(propertyId: string): PropertyNavItem[] {
       shortLabel: "Purposal",
       icon: FilePenLineIcon,
       match: (pathname, id) => pathname.startsWith(`/${id}/purposal-builder`),
+    },
+    {
+      id: "customers",
+      href: `${base}/customers`,
+      label: "Customers",
+      shortLabel: "Customers",
+      icon: UserRoundIcon,
+      match: (pathname, id) => pathname.startsWith(`/${id}/customers`),
     },
     {
       id: "team",
