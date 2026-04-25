@@ -193,45 +193,47 @@ export function PropertyCustomersPage() {
       {createMutation.isError ? <p className="text-sm text-destructive">{createMutation.error.message}</p> : null}
       {updateMutation.isError ? <p className="text-sm text-destructive">{updateMutation.error.message}</p> : null}
       {deleteMutation.isError ? <p className="text-sm text-destructive">{deleteMutation.error.message}</p> : null}
-      {query.data?.pagination.totalPages && query.data.pagination.totalPages > 1 ? (
-        <Pagination>
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                disabled={!query.data.pagination.hasPreviousPage}
-                onClick={() => {
-                  if (!query.data?.pagination.hasPreviousPage) return;
-                  setPage((prev) => Math.max(1, prev - 1));
-                }}
-              />
-            </PaginationItem>
-            {Array.from({ length: query.data.pagination.totalPages }, (_, idx) => idx + 1)
-              .filter((p) =>
-                p === 1 ||
-                p === query.data!.pagination.totalPages ||
-                Math.abs(p - query.data!.pagination.page) <= 1,
-              )
-              .map((p) => (
-                <PaginationItem key={`page-${p}`}>
-                  <PaginationLink
-                    isActive={p === query.data?.pagination.page}
-                    onClick={() => setPage(p)}
-                  >
-                    {p}
-                  </PaginationLink>
-                </PaginationItem>
-              ))}
-            <PaginationItem>
-              <PaginationNext
-                disabled={!query.data.pagination.hasNextPage}
-                onClick={() => {
-                  if (!query.data?.pagination.hasNextPage) return;
-                  setPage((prev) => prev + 1);
-                }}
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
+      {query.data?.pagination ? (
+        <div className="flex justify-end">
+          <Pagination className="mx-0 w-auto justify-end">
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  disabled={!query.data.pagination.hasPreviousPage}
+                  onClick={() => {
+                    if (!query.data?.pagination.hasPreviousPage) return;
+                    setPage((prev) => Math.max(1, prev - 1));
+                  }}
+                />
+              </PaginationItem>
+              {Array.from({ length: query.data.pagination.totalPages }, (_, idx) => idx + 1)
+                .filter((p) =>
+                  p === 1 ||
+                  p === query.data!.pagination.totalPages ||
+                  Math.abs(p - query.data!.pagination.page) <= 1,
+                )
+                .map((p) => (
+                  <PaginationItem key={`page-${p}`}>
+                    <PaginationLink
+                      isActive={p === query.data?.pagination.page}
+                      onClick={() => setPage(p)}
+                    >
+                      {p}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+              <PaginationItem>
+                <PaginationNext
+                  disabled={!query.data.pagination.hasNextPage}
+                  onClick={() => {
+                    if (!query.data?.pagination.hasNextPage) return;
+                    setPage((prev) => prev + 1);
+                  }}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
       ) : null}
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
