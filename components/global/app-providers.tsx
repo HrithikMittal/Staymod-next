@@ -6,6 +6,7 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 import { MobileInstallPrompt } from "@/components/global/mobile-install-prompt";
+import { MobilePullToRefresh } from "@/components/global/mobile-pull-to-refresh";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 export function AppProviders({ children }: { children: ReactNode }) {
@@ -25,6 +26,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
       <TooltipProvider delay={0}>
         {children}
         <MobileInstallPrompt />
+        <MobilePullToRefresh />
         <ToastContainer position="top-right" autoClose={2500} newestOnTop closeOnClick />
       </TooltipProvider>
     </QueryClientProvider>
