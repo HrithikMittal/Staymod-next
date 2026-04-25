@@ -1,7 +1,7 @@
 "use client";
 
 import { UserButton, useUser } from "@clerk/nextjs";
-import { MoonIcon, SunIcon } from "lucide-react";
+import { LaptopIcon, MoonIcon, SunIcon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 
@@ -38,12 +38,11 @@ type PropertySidebarFooterProps = {
 
 export function PropertySidebarFooter({ collapsed = false }: PropertySidebarFooterProps) {
   const { user, isLoaded } = useUser();
-  const { resolvedTheme, setTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  const isDark = resolvedTheme === "dark";
-  const toggleTheme = () => setTheme(isDark ? "light" : "dark");
+  const currentTheme = theme === "light" || theme === "dark" || theme === "system" ? theme : "system";
 
   if (!isLoaded || !user) {
     return null;
@@ -55,31 +54,66 @@ export function PropertySidebarFooter({ collapsed = false }: PropertySidebarFoot
   return (
     <div
       className={cn(
-        "shrink-0 border-sidebar-border border-t pt-2.5 pb-2.5",
+        "shrink-0 pt-1 pb-2.5",
         collapsed ? "px-2" : "pr-2 pl-3",
       )}
     >
       {/* Theme toggle — only render after mount so resolvedTheme is known */}
       {mounted && (
         <div className={cn("mb-2", collapsed ? "flex justify-center" : "")}>
-          <button
-            type="button"
-            onClick={toggleTheme}
-            aria-label="Toggle theme"
-            className={cn(
-              "flex items-center gap-2 rounded-md text-xs font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground",
-              collapsed ? "size-8 justify-center p-0" : "h-7 w-full px-2",
-            )}
-          >
-            {isDark ? (
-              <SunIcon className="size-3.5" aria-hidden />
-            ) : (
-              <MoonIcon className="size-3.5" aria-hidden />
-            )}
-            {!collapsed && (
-              <span>{isDark ? "Light mode" : "Dark mode"}</span>
-            )}
-          </button>
+          {collapsed ? (
+            <button
+              type="button"
+              onClick={() => setTheme("system")}
+              aria-label="Theme: system mode"
+              className="flex size-8 items-center justify-center rounded-md text-xs font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+              title="Theme: system"
+            >
+              <LaptopIcon className="size-3.5" aria-hidden />
+            </button>
+          ) : (
+            <div className="grid h-7 w-full grid-cols-3 rounded-md border border-sidebar-border/80 bg-sidebar-accent/50 p-0.5 text-[11px]">
+              <button
+                type="button"
+                onClick={() => setTheme("light")}
+                className={cn(
+                  "inline-flex items-center justify-center gap-1 rounded-sm font-medium transition-colors",
+                  currentTheme === "light"
+                    ? "bg-sidebar text-sidebar-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-sidebar-foreground",
+                )}
+              >
+                <SunIcon className="size-3" aria-hidden />
+                <span>Light</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTheme("dark")}
+                className={cn(
+                  "inline-flex items-center justify-center gap-1 rounded-sm font-medium transition-colors",
+                  currentTheme === "dark"
+                    ? "bg-sidebar text-sidebar-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-sidebar-foreground",
+                )}
+              >
+                <MoonIcon className="size-3" aria-hidden />
+                <span>Dark</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTheme("system")}
+                className={cn(
+                  "inline-flex items-center justify-center gap-1 rounded-sm font-medium transition-colors",
+                  currentTheme === "system"
+                    ? "bg-sidebar text-sidebar-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-sidebar-foreground",
+                )}
+              >
+                <LaptopIcon className="size-3" aria-hidden />
+                <span>System</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
 

@@ -35,7 +35,7 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <body className="h-[100dvh] min-h-full overflow-hidden flex flex-col bg-background text-foreground">
-          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
             <ClerkProvider
               ui={ui}
               taskUrls={{

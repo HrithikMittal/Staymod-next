@@ -7,6 +7,7 @@ import "react-toastify/dist/ReactToastify.css";
 
 import { MobileInstallPrompt } from "@/components/global/mobile-install-prompt";
 import { MobilePullToRefresh } from "@/components/global/mobile-pull-to-refresh";
+import TopProgressBar from "@/components/global/top-progress-bar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 export function AppProviders({ children }: { children: ReactNode }) {
@@ -24,6 +25,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider delay={0}>
+        <TopProgressBar />
         {children}
         <MobileInstallPrompt />
         <MobilePullToRefresh />
