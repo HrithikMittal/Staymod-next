@@ -10,6 +10,15 @@ export type CustomerListItem = {
   createdAt: string;
   updatedAt: string;
   lastBookingAt?: string;
+  identityDocuments?: Array<{
+    bookingId: string;
+    fileUrl: string;
+    fileKey: string;
+    fileName: string;
+    contentType: string;
+    source: "camera" | "photo" | "pdf";
+    uploadedAt: string;
+  }>;
 };
 
 export type ListCustomersResponse = {
@@ -28,6 +37,15 @@ export type UpsertCustomerPayload = {
   email: string;
   name?: string;
   phone?: string;
+  identityDocuments?: Array<{
+    bookingId: string;
+    fileUrl: string;
+    fileKey: string;
+    fileName: string;
+    contentType: string;
+    source: "camera" | "photo" | "pdf";
+    uploadedAt: string;
+  }>;
 };
 
 export function fetchCustomers(

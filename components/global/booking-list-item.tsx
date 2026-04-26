@@ -86,6 +86,8 @@ export function BookingListItemRow({
     booking.status !== "cancelled" &&
     booking.status !== "no_show" &&
     Boolean(onCheckIn);
+  const canEditCheckIn =
+    (booking.status === "checked_in" || booking.status === "completed") && Boolean(onCheckIn);
   const canMarkCompleted =
     booking.status === "checked_in" &&
     Boolean(onMarkCompleted);
@@ -162,6 +164,12 @@ export function BookingListItemRow({
                 <DropdownMenuItem onClick={() => onCheckIn?.()}>
                   <CheckCheckIcon className="size-4" />
                   Check in
+                </DropdownMenuItem>
+              ) : null}
+              {canEditCheckIn ? (
+                <DropdownMenuItem onClick={() => onCheckIn?.()}>
+                  <CheckCheckIcon className="size-4" />
+                  Edit check-in
                 </DropdownMenuItem>
               ) : null}
               {canMarkCompleted ? (

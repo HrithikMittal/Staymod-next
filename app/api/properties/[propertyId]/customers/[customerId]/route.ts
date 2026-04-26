@@ -30,6 +30,50 @@ function ensureEmail(value: unknown): string {
   return trimmed;
 }
 
+function parseIdentityDocuments(value: unknown) {
+  if (value == null) return undefined;
+  if (!Array.isArray(value)) {
+    throw new Error("identityDocuments must be an array.");
+  }
+  return value.map((entry, idx) => {
+    if (!entry || typeof entry !== "object") {
+      throw new Error(`identityDocuments.${idx} must be an object.`);
+    }
+    const row = entry as Record<string, unknown>;
+    const bookingId = typeof row.bookingId === "string" && ObjectId.isValid(row.bookingId)
+      ? new ObjectId(row.bookingId)
+      : null;
+    if (!bookingId) {
+      throw new Error(`identityDocuments.${idx}.bookingId must be a valid id.`);
+    }
+    const fileUrl = typeof row.fileUrl === "string" ? row.fileUrl.trim() : "";
+    const fileKey = typeof row.fileKey === "string" ? row.fileKey.trim() : "";
+    const fileName = typeof row.fileName === "string" ? row.fileName.trim() : "";
+    const contentType = typeof row.contentType === "string" ? row.contentType.trim() : "";
+    const source = typeof row.source === "string" ? row.source.trim() : "";
+    if (!fileUrl || !fileKey || !fileName || !contentType) {
+      throw new Error(`identityDocuments.${idx} is missing required file fields.`);
+    }
+    if (source !== "camera" && source !== "photo" && source !== "pdf") {
+      throw new Error(`identityDocuments.${idx}.source must be camera, photo, or pdf.`);
+    }
+    const uploadedAtRaw = row.uploadedAt;
+    const uploadedAt = uploadedAtRaw ? new Date(String(uploadedAtRaw)) : new Date();
+    if (Number.isNaN(uploadedAt.getTime())) {
+      throw new Error(`identityDocuments.${idx}.uploadedAt must be a valid date.`);
+    }
+    return {
+      bookingId,
+      fileUrl,
+      fileKey,
+      fileName,
+      contentType,
+      source,
+      uploadedAt,
+    };
+  });
+}
+
 function serializeCustomer(c: Customer) {
   return {
     _id: c._id.toString(),
@@ -41,6 +85,15 @@ function serializeCustomer(c: Customer) {
     createdAt: c.createdAt.toISOString(),
     updatedAt: c.updatedAt.toISOString(),
     lastBookingAt: c.lastBookingAt?.toISOString(),
+    identityDocuments: (c.identityDocuments ?? []).map((doc) => ({
+      bookingId: doc.bookingId.toString(),
+      fileUrl: doc.fileUrl,
+      fileKey: doc.fileKey,
+      fileName: doc.fileName,
+      contentType: doc.contentType,
+      source: doc.source,
+      uploadedAt: doc.uploadedAt.toISOString(),
+    })),
   };
 }
 
@@ -87,6 +140,7 @@ export async function PATCH(req: Request, context: RouteContext) {
     const emailNormalized = normalizeEmail(email);
     const name = typeof payload.name === "string" && payload.name.trim() ? payload.name.trim() : undefined;
     const phone = typeof payload.phone === "string" && payload.phone.trim() ? payload.phone.trim() : undefined;
+    const identityDocuments = parseIdentityDocuments(payload.identityDocuments);
 
     const duplicate = await db.collection<Customer>(CUSTOMERS_COLLECTION).findOne({
       _id: { $ne: customerObjectId },
@@ -99,9 +153,19 @@ export async function PATCH(req: Request, context: RouteContext) {
     }
 
     const now = new Date();
+    const updateSet: Record<string, unknown> = {
+      email,
+      emailNormalized,
+      name,
+      phone,
+      updatedAt: now,
+    };
+    if (identityDocuments !== undefined) {
+      updateSet.identityDocuments = identityDocuments;
+    }
     await db.collection<Customer>(CUSTOMERS_COLLECTION).updateOne(
       { _id: customerObjectId },
-      { $set: { email, emailNormalized, name, phone, updatedAt: now } },
+      { $set: updateSet },
     );
     const updated = await db.collection<Customer>(CUSTOMERS_COLLECTION).findOne({ _id: customerObjectId });
     if (!updated) return NextResponse.json({ error: "Customer not found." }, { status: 404 });

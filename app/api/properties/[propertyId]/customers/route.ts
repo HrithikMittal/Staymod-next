@@ -28,6 +28,15 @@ function serializeCustomer(c: Customer) {
     createdAt: c.createdAt.toISOString(),
     updatedAt: c.updatedAt.toISOString(),
     lastBookingAt: c.lastBookingAt?.toISOString(),
+    identityDocuments: (c.identityDocuments ?? []).map((doc) => ({
+      bookingId: doc.bookingId.toString(),
+      fileUrl: doc.fileUrl,
+      fileKey: doc.fileKey,
+      fileName: doc.fileName,
+      contentType: doc.contentType,
+      source: doc.source,
+      uploadedAt: doc.uploadedAt.toISOString(),
+    })),
   };
 }
 

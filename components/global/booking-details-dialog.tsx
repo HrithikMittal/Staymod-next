@@ -39,6 +39,8 @@ export function BookingDetailsDialog({
   const customTotal = (booking?.customItems ?? []).reduce((sum, item) => sum + item.amount, 0);
   const discount = Math.max(0, booking?.discount ?? 0);
   const totalAmount = Math.max(0, roomAmount + optionsTotal + customTotal - discount);
+  const isEditableCheckinStatus =
+    booking?.status === "checked_in" || booking?.status === "completed";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -121,7 +123,7 @@ export function BookingDetailsDialog({
                   onCheckIn(booking);
                 }}
               >
-                Check in
+                {isEditableCheckinStatus ? "Edit check-in" : "Check in"}
               </Button>
               <Button
                 type="button"

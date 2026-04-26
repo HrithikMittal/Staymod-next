@@ -33,12 +33,17 @@ function formatDate(value?: string): string {
   return d.toLocaleDateString();
 }
 
+function docsLabel(count: number): string {
+  return `${count} document${count === 1 ? "" : "s"}`;
+}
+
 export function PropertyCustomersPage() {
   const params = useParams();
   const propertyId = typeof params.id === "string" ? params.id : "";
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<CustomerListItem | null>(null);
+  const [editingDocs, setEditingDocs] = useState<NonNullable<CustomerListItem["identityDocuments"]>>([]);
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -124,6 +129,7 @@ export function PropertyCustomersPage() {
                     <th className="px-4 py-3">Name</th>
                     <th className="px-4 py-3">Email</th>
                     <th className="px-4 py-3">Phone</th>
+                    <th className="px-4 py-3">ID documents</th>
                     <th className="px-4 py-3">Last booking</th>
                     <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
@@ -132,12 +138,49 @@ export function PropertyCustomersPage() {
                   {customers.map((customer) => (
                     <tr key={customer._id} className="border-b border-border/40 text-sm">
                       <td className="px-4 py-3 font-medium">{customer.name?.trim() || "Unnamed customer"}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{customer.email}</td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        <p className="truncate" title={customer.email}>
+                          {customer.email}
+                        </p>
+                      </td>
                       <td className="px-4 py-3 text-muted-foreground">{customer.phone?.trim() || "—"}</td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {(customer.identityDocuments?.length ?? 0) === 0 ? (
+                          "—"
+                        ) : (
+                          <div className="space-y-1">
+                            <p className="text-xs">{docsLabel(customer.identityDocuments?.length ?? 0)}</p>
+                            <div className="flex flex-wrap gap-1">
+                              {(customer.identityDocuments ?? []).slice(0, 2).map((doc, idx) => (
+                                <a
+                                  key={`${doc.fileKey}-${doc.uploadedAt}-${idx}`}
+                                  href={doc.fileUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-xs underline"
+                                >
+                                  {doc.fileName}
+                                </a>
+                              ))}
+                              {(customer.identityDocuments?.length ?? 0) > 2 ? (
+                                <span className="text-xs">+{(customer.identityDocuments?.length ?? 0) - 2} more</span>
+                              ) : null}
+                            </div>
+                          </div>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-muted-foreground">{formatDate(customer.lastBookingAt)}</td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-2">
-                          <Button type="button" size="sm" variant="outline" onClick={() => setEditing(customer)}>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setEditing(customer);
+                              setEditingDocs(customer.identityDocuments ?? []);
+                            }}
+                          >
                             <PencilIcon data-icon="inline-start" />
                             Edit
                           </Button>
@@ -167,9 +210,38 @@ export function PropertyCustomersPage() {
                     <p className="text-xs text-muted-foreground">
                       Phone: {customer.phone?.trim() || "—"} · Last booking: {formatDate(customer.lastBookingAt)}
                     </p>
+                    <p className="text-xs text-muted-foreground">
+                      ID docs:{" "}
+                      {(customer.identityDocuments?.length ?? 0) > 0
+                        ? docsLabel(customer.identityDocuments?.length ?? 0)
+                        : "—"}
+                    </p>
+                    {(customer.identityDocuments?.length ?? 0) > 0 ? (
+                      <div className="mt-1 flex flex-wrap gap-1.5">
+                        {(customer.identityDocuments ?? []).map((doc, idx) => (
+                          <a
+                            key={`${doc.fileKey}-${doc.uploadedAt}-${idx}`}
+                            href={doc.fileUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs underline"
+                          >
+                            {doc.fileName}
+                          </a>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                   <div className="mt-3 flex gap-2">
-                    <Button type="button" size="sm" variant="outline" onClick={() => setEditing(customer)}>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setEditing(customer);
+                        setEditingDocs(customer.identityDocuments ?? []);
+                      }}
+                    >
                       <PencilIcon data-icon="inline-start" />
                       Edit
                     </Button>
@@ -250,24 +322,73 @@ export function PropertyCustomersPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
+      <Dialog
+        open={editing !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditing(null);
+            setEditingDocs([]);
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-lg">
           <DialogTitle>Edit customer</DialogTitle>
           {editing ? (
-            <CustomerForm
-              key={`${editing._id}-${editing.updatedAt}`}
-              initialValue={{
-                email: editing.email,
-                name: editing.name,
-                phone: editing.phone,
-              }}
-              submitLabel="Save changes"
-              pendingLabel="Saving..."
-              isPending={updateMutation.isPending}
-              errorMessage={updateMutation.error?.message}
-              onCancel={() => setEditing(null)}
-              onSubmit={(payload) => updateMutation.mutate(payload)}
-            />
+            <div className="space-y-4">
+              <div className="space-y-2 rounded-md border border-border/70 p-3">
+                <p className="text-xs font-medium uppercase text-muted-foreground">Identification documents</p>
+                {editingDocs.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No ID documents linked to this customer.</p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {editingDocs.map((doc, idx) => (
+                      <li key={`${doc.fileKey}-${idx}`} className="flex items-center justify-between gap-2">
+                        <a
+                          href={doc.fileUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="truncate text-xs underline"
+                        >
+                          {doc.fileName}
+                        </a>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() =>
+                            setEditingDocs((prev) => prev.filter((_, docIdx) => docIdx !== idx))
+                          }
+                        >
+                          Remove
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <CustomerForm
+                key={`${editing._id}-${editing.updatedAt}`}
+                initialValue={{
+                  email: editing.email,
+                  name: editing.name,
+                  phone: editing.phone,
+                }}
+                submitLabel="Save changes"
+                pendingLabel="Saving..."
+                isPending={updateMutation.isPending}
+                errorMessage={updateMutation.error?.message}
+                onCancel={() => {
+                  setEditing(null);
+                  setEditingDocs([]);
+                }}
+                onSubmit={(payload) =>
+                  updateMutation.mutate({
+                    ...payload,
+                    identityDocuments: editingDocs,
+                  })
+                }
+              />
+            </div>
           ) : null}
         </DialogContent>
       </Dialog>

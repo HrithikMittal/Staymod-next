@@ -133,13 +133,16 @@ export async function POST(req: Request, context: RouteContext) {
         const fileName = normalizeString(d.fileName);
         const contentType = normalizeString(d.contentType);
         if (!fileUrl || !fileKey || !fileName || !contentType) return null;
+        const uploadedAtRaw = d.uploadedAt;
+        const uploadedAtParsed = uploadedAtRaw ? new Date(String(uploadedAtRaw)) : now;
+        const uploadedAt = Number.isNaN(uploadedAtParsed.getTime()) ? now : uploadedAtParsed;
         return {
           fileUrl,
           fileKey,
           fileName,
           contentType,
           source,
-          uploadedAt: now,
+          uploadedAt,
         } as BookingCheckinGuest["identityDocuments"][number];
       })
       .filter((x): x is BookingCheckinGuest["identityDocuments"][number] => Boolean(x));
@@ -147,7 +150,48 @@ export async function POST(req: Request, context: RouteContext) {
     if (identityDocuments.length === 0) continue;
 
     let customerId: ObjectId | undefined = undefined;
-    if (email) {
+    const isPrimaryGuest = guests.length === 0;
+
+    // Always prefer the booking-linked customer for the first guest so
+    // identity docs consistently appear on the customer attached to booking.
+    if (isPrimaryGuest && booking.customerId) {
+      customerId = booking.customerId;
+      const primaryLinkedUpdate = await db.collection<Customer>(CUSTOMERS_COLLECTION).updateOne(
+        { _id: booking.customerId, orgId, propertyId: propertyObjectId },
+        {
+          $set: {
+            updatedAt: now,
+            ...(email ? { email, emailNormalized: email.trim().toLowerCase() } : {}),
+            ...(name ? { name } : {}),
+            ...(phone ? { phone } : {}),
+          },
+        },
+      );
+      if (primaryLinkedUpdate.matchedCount === 0) {
+        customerId = undefined;
+      }
+    }
+
+    if (isPrimaryGuest && !customerId) {
+      const primaryEmail = email ?? booking.guestEmail;
+      const primaryName = name || booking.guestName;
+      const primaryPhone = phone || booking.guestPhone;
+      if (primaryEmail) {
+        customerId = await findOrCreateCustomerForBooking({
+          orgId,
+          propertyId: propertyObjectId,
+          guestEmail: primaryEmail,
+          guestName: primaryName,
+          guestPhone: primaryPhone,
+        });
+      }
+      if (customerId && (!booking.customerId || !booking.customerId.equals(customerId))) {
+        await db.collection<Booking>(BOOKINGS_COLLECTION).updateOne(
+          { _id: bookingObjectId, orgId, propertyId: propertyObjectId },
+          { $set: { customerId, updatedAt: now } },
+        );
+      }
+    } else if (email) {
       customerId = await findOrCreateCustomerForBooking({
         orgId,
         propertyId: propertyObjectId,
@@ -155,12 +199,23 @@ export async function POST(req: Request, context: RouteContext) {
         guestName: name,
         guestPhone: phone,
       });
-    } else if (guests.length === 0 && booking.customerId) {
-      customerId = booking.customerId;
     }
 
     if (customerId) {
-      const customerDocs: CustomerIdentityDocument[] = identityDocuments.map((d) => ({
+      const customerDocCollection = db.collection<Customer>(CUSTOMERS_COLLECTION);
+      const existingCustomer = await customerDocCollection.findOne({
+        _id: customerId,
+        orgId,
+        propertyId: propertyObjectId,
+      });
+      const existingDocKeys = new Set(
+        (existingCustomer?.identityDocuments ?? [])
+          .filter((doc) => doc.bookingId.equals(bookingObjectId))
+          .map((doc) => doc.fileKey),
+      );
+      const docsToAppend = identityDocuments.filter((d) => !existingDocKeys.has(d.fileKey));
+
+      const customerDocs: CustomerIdentityDocument[] = docsToAppend.map((d) => ({
         bookingId: bookingObjectId,
         fileUrl: d.fileUrl,
         fileKey: d.fileKey,
@@ -169,13 +224,57 @@ export async function POST(req: Request, context: RouteContext) {
         source: d.source,
         uploadedAt: d.uploadedAt,
       }));
-      await db.collection<Customer>(CUSTOMERS_COLLECTION).updateOne(
+      const attachResult = await customerDocCollection.updateOne(
         { _id: customerId, orgId, propertyId: propertyObjectId },
         {
           $set: { updatedAt: now },
-          $push: { identityDocuments: { $each: customerDocs } },
+          ...(customerDocs.length > 0
+            ? { $push: { identityDocuments: { $each: customerDocs } } }
+            : {}),
         },
       );
+      if (attachResult.matchedCount === 0 && email) {
+        const fallbackCustomerId = await findOrCreateCustomerForBooking({
+          orgId,
+          propertyId: propertyObjectId,
+          guestEmail: email,
+          guestName: name,
+          guestPhone: phone,
+        });
+        if (fallbackCustomerId) {
+          customerId = fallbackCustomerId;
+          const fallbackCustomer = await customerDocCollection.findOne({
+            _id: fallbackCustomerId,
+            orgId,
+            propertyId: propertyObjectId,
+          });
+          const fallbackExistingDocKeys = new Set(
+            (fallbackCustomer?.identityDocuments ?? [])
+              .filter((doc) => doc.bookingId.equals(bookingObjectId))
+              .map((doc) => doc.fileKey),
+          );
+          const fallbackDocsToAppend = identityDocuments
+            .filter((d) => !fallbackExistingDocKeys.has(d.fileKey))
+            .map((d) => ({
+              bookingId: bookingObjectId,
+              fileUrl: d.fileUrl,
+              fileKey: d.fileKey,
+              fileName: d.fileName,
+              contentType: d.contentType,
+              source: d.source,
+              uploadedAt: d.uploadedAt,
+            }));
+          await customerDocCollection.updateOne(
+            { _id: fallbackCustomerId, orgId, propertyId: propertyObjectId },
+            {
+              $set: { updatedAt: now },
+              ...(fallbackDocsToAppend.length > 0
+                ? { $push: { identityDocuments: { $each: fallbackDocsToAppend } } }
+                : {}),
+            },
+          );
+        }
+      }
     }
 
     guests.push({
