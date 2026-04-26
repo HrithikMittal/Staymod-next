@@ -32,6 +32,8 @@ export type Property = OrganizationScope & {
   name: string;
   slug: string;
   type: PropertyType;
+  gstEnabled?: boolean;
+  gstNumber?: string;
   description?: string;
   address: PropertyAddress;
   contact: PropertyContact;

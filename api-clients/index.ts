@@ -3,9 +3,12 @@ export {
   createProperty,
   fetchProperties,
   fetchProperty,
+  updatePropertySettings,
   type CreatePropertyPayload,
   type ListPropertiesResponse,
+  type PropertyDetails,
   type PropertyListItem,
+  type UpdatePropertySettingsPayload,
 } from "./properties";
 export {
   createRoom,

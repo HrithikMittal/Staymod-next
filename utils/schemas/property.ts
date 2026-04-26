@@ -106,3 +106,30 @@ export function createPropertyDocument(
     updatedAt: now,
   };
 }
+
+export type UpdatePropertySettingsInput = {
+  name: string;
+  addressLine1: string;
+  gstEnabled: boolean;
+  gstNumber?: string;
+};
+
+export function parseUpdatePropertySettingsInput(payload: unknown): UpdatePropertySettingsInput {
+  if (!payload || typeof payload !== "object") {
+    throw new Error("Invalid payload.");
+  }
+
+  const input = payload as Record<string, unknown>;
+  const gstEnabled = Boolean(input.gstEnabled);
+  const gstNumber = ensureOptionalString(input.gstNumber);
+  if (gstEnabled && !gstNumber) {
+    throw new Error("gstNumber is required when GST is enabled.");
+  }
+
+  return {
+    name: ensureString(input.name, "name"),
+    addressLine1: ensureString(input.addressLine1, "addressLine1"),
+    gstEnabled,
+    gstNumber,
+  };
+}
