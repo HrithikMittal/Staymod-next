@@ -57,6 +57,7 @@ export type CreateBookingPayload = {
   quantity?: number;
   roomNumbers?: string[];
   advanceAmount?: number;
+  sendEmailNotification?: boolean;
   status?: "pending" | "confirmed" | "checked_in" | "completed" | "cancelled" | "no_show";
 };
 

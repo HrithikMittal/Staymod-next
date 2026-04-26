@@ -157,6 +157,10 @@ export async function POST(req: Request, context: RouteContext) {
 
   try {
     const payload = await req.json();
+    const sendEmailNotification =
+      typeof (payload as { sendEmailNotification?: unknown })?.sendEmailNotification === "boolean"
+        ? Boolean((payload as { sendEmailNotification?: unknown }).sendEmailNotification)
+        : true;
     const input = parseCreateBookingBody(payload, propertyObjectId);
     const roomMap: Record<string, Room> = {};
 
@@ -201,12 +205,14 @@ export async function POST(req: Request, context: RouteContext) {
       await applyBookingInventoryDeduction(created);
     }
 
-    queueBookingGuestEmailNotification({
-      orgId,
-      propertyId: propertyObjectId,
-      previous: undefined,
-      next: created,
-    });
+    if (sendEmailNotification) {
+      queueBookingGuestEmailNotification({
+        orgId,
+        propertyId: propertyObjectId,
+        previous: undefined,
+        next: created,
+      });
+    }
 
     return NextResponse.json({ booking: serializeBooking(created) }, { status: 201 });
   } catch (error) {

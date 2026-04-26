@@ -9,6 +9,7 @@ import { createBooking, updateBooking } from "@/api-clients/bookings";
 import type { ListBookingOptionsResponse } from "@/api-clients/booking-options";
 import type { RoomListItem } from "@/api-clients/rooms";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -263,6 +264,7 @@ function BookingForm({
     () => (initialForm.customItems ?? []).map((c) => ({ name: c.name, amount: c.amount })),
   );
   const [step, setStep] = useState<"guest" | "stay" | "extras">("guest");
+  const [sendEmailNotification, setSendEmailNotification] = useState(true);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -322,6 +324,7 @@ function BookingForm({
       const payload: CreateBookingPayload = {
         ...payloadBase,
         rooms,
+        sendEmailNotification,
       };
 
       if (booking) {
@@ -935,6 +938,15 @@ function BookingForm({
           {saveMutation.error ? (
             <p className="text-sm text-destructive">{saveMutation.error.message}</p>
           ) : null}
+          <label className="flex items-center gap-2 rounded-md border border-border/70 px-3 py-2 text-xs">
+            <Checkbox
+              checked={sendEmailNotification}
+              onCheckedChange={(next) => setSendEmailNotification(next === true)}
+            />
+            <span>
+              {isEdit ? "Send booking update email to guest" : "Send booking confirmation email to guest"}
+            </span>
+          </label>
           </>
           ) : null}
         </div>

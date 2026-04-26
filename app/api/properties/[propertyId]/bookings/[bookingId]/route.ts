@@ -160,6 +160,10 @@ export async function PATCH(req: Request, context: RouteContext) {
 
   try {
     const payload = await req.json();
+    const sendEmailNotification =
+      typeof (payload as { sendEmailNotification?: unknown })?.sendEmailNotification === "boolean"
+        ? Boolean((payload as { sendEmailNotification?: unknown }).sendEmailNotification)
+        : true;
     const input = parseCreateBookingBody(payload, propertyObjectId);
     const roomMap: Record<string, Room> = {};
     for (const line of input.rooms) {
@@ -226,12 +230,14 @@ export async function PATCH(req: Request, context: RouteContext) {
       await applyBookingInventoryDeduction(updated);
     }
 
-    queueBookingGuestEmailNotification({
-      orgId,
-      propertyId: propertyObjectId,
-      previous: old,
-      next: updated,
-    });
+    if (sendEmailNotification) {
+      queueBookingGuestEmailNotification({
+        orgId,
+        propertyId: propertyObjectId,
+        previous: old,
+        next: updated,
+      });
+    }
 
     return NextResponse.json({ booking: serializeBooking(updated) });
   } catch (error) {

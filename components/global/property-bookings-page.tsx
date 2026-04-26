@@ -153,6 +153,7 @@ export function PropertyBookingsPage() {
       customItems: booking.customItems,
       discount: booking.discount,
       advanceAmount: booking.advanceAmount,
+      sendEmailNotification: false,
       rooms: Object.fromEntries(
         Object.entries(booking.rooms).map(([roomId, row]) => [
           roomId,
