@@ -3,7 +3,7 @@
 import { UserButton, useUser } from "@clerk/nextjs";
 import { LaptopIcon, MoonIcon, SunIcon } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -36,13 +36,37 @@ type PropertySidebarFooterProps = {
   collapsed?: boolean;
 };
 
+const THEME_SELECTED_KEY = "staymod-theme-selected";
+
+function useMounted() {
+  return useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+}
+
+function useHasSelectedTheme() {
+  return useSyncExternalStore(
+    () => () => {},
+    () => window.localStorage.getItem(THEME_SELECTED_KEY) === "1",
+    () => false,
+  );
+}
+
 export function PropertySidebarFooter({ collapsed = false }: PropertySidebarFooterProps) {
   const { user, isLoaded } = useUser();
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useMounted();
+  const hasSelectedTheme = useHasSelectedTheme();
 
-  const currentTheme = theme === "light" || theme === "dark" || theme === "system" ? theme : "system";
+  const resolvedTheme = theme === "light" || theme === "dark" || theme === "system" ? theme : "system";
+  const currentTheme = hasSelectedTheme ? resolvedTheme : "system";
+
+  function handleThemeSelect(next: "light" | "dark" | "system") {
+    window.localStorage.setItem(THEME_SELECTED_KEY, "1");
+    setTheme(next);
+  }
 
   if (!isLoaded || !user) {
     return null;
@@ -64,7 +88,7 @@ export function PropertySidebarFooter({ collapsed = false }: PropertySidebarFoot
           {collapsed ? (
             <button
               type="button"
-              onClick={() => setTheme("system")}
+              onClick={() => handleThemeSelect("system")}
               aria-label="Theme: system mode"
               className="flex size-8 items-center justify-center rounded-md text-xs font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
               title="Theme: system"
@@ -75,7 +99,7 @@ export function PropertySidebarFooter({ collapsed = false }: PropertySidebarFoot
             <div className="grid h-7 w-full grid-cols-3 rounded-md border border-sidebar-border/80 bg-sidebar-accent/50 p-0.5 text-[11px]">
               <button
                 type="button"
-                onClick={() => setTheme("light")}
+                onClick={() => handleThemeSelect("light")}
                 className={cn(
                   "inline-flex items-center justify-center gap-1 rounded-sm font-medium transition-colors",
                   currentTheme === "light"
@@ -88,7 +112,7 @@ export function PropertySidebarFooter({ collapsed = false }: PropertySidebarFoot
               </button>
               <button
                 type="button"
-                onClick={() => setTheme("dark")}
+                onClick={() => handleThemeSelect("dark")}
                 className={cn(
                   "inline-flex items-center justify-center gap-1 rounded-sm font-medium transition-colors",
                   currentTheme === "dark"
@@ -101,7 +125,7 @@ export function PropertySidebarFooter({ collapsed = false }: PropertySidebarFoot
               </button>
               <button
                 type="button"
-                onClick={() => setTheme("system")}
+                onClick={() => handleThemeSelect("system")}
                 className={cn(
                   "inline-flex items-center justify-center gap-1 rounded-sm font-medium transition-colors",
                   currentTheme === "system"
