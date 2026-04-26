@@ -13,6 +13,7 @@ import {
   CalendarIcon,
   CheckCheckIcon,
   CircleXIcon,
+  DownloadIcon,
   MailIcon,
   MoreHorizontalIcon,
   PencilIcon,
@@ -60,6 +61,8 @@ type BookingListItemRowProps = {
   markCompletedPending?: boolean;
   onCancelBooking?: () => void;
   cancelBookingPending?: boolean;
+  onDownloadReceipt?: () => void;
+  downloadReceiptPending?: boolean;
 };
 
 export function BookingListItemRow({
@@ -76,6 +79,8 @@ export function BookingListItemRow({
   markCompletedPending,
   onCancelBooking,
   cancelBookingPending,
+  onDownloadReceipt,
+  downloadReceiptPending,
 }: BookingListItemRowProps) {
   const statusLabel = booking.status.replace(/_/g, " ");
   const canResendConfirmation =
@@ -193,6 +198,10 @@ export function BookingListItemRow({
                   Resend confirmation email
                 </DropdownMenuItem>
               ) : null}
+              <DropdownMenuItem onClick={() => onDownloadReceipt?.()} disabled={downloadReceiptPending}>
+                <DownloadIcon className="size-4" />
+                Download receipt
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

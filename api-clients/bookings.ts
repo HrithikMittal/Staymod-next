@@ -92,3 +92,20 @@ export function resendConfirmationEmail(propertyId: string, bookingId: string) {
     { method: "POST" },
   );
 }
+
+export function fetchBookingReceipt(propertyId: string, bookingId: string) {
+  return fetch(`/api/properties/${propertyId}/bookings/${bookingId}/receipt`, {
+    method: "GET",
+    credentials: "same-origin",
+  }).then(async (res) => {
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(body || `Failed to download receipt: ${res.status}`);
+    }
+    const contentDisposition = res.headers.get("content-disposition") ?? "";
+    const fileNameMatch = contentDisposition.match(/filename="([^"]+)"/);
+    const fileName = fileNameMatch?.[1] ?? `receipt-${bookingId}.pdf`;
+    const blob = await res.blob();
+    return { fileName, blob };
+  });
+}

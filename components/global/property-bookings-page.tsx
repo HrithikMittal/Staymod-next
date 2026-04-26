@@ -1,7 +1,7 @@
 "use client";
 
 import type { BookingListItem, ListBookingsResponse } from "@/api-clients/bookings";
-import { resendConfirmationEmail, updateBooking } from "@/api-clients/bookings";
+import { fetchBookingReceipt, resendConfirmationEmail, updateBooking } from "@/api-clients/bookings";
 import { BookingDetailsDialog } from "@/components/global/booking-details-dialog";
 import type { ListRoomsResponse, RoomListItem } from "@/api-clients/rooms";
 import { BookingListItemRow } from "@/components/global/booking-list-item";
@@ -38,6 +38,7 @@ export function PropertyBookingsPage() {
   }>({ open: false, booking: null, roomAmount: 0 });
   const [resendNotice, setResendNotice] = useState<string | null>(null);
   const [statusNotice, setStatusNotice] = useState<string | null>(null);
+  const [receiptNotice, setReceiptNotice] = useState<string | null>(null);
   const [cancelConfirmBooking, setCancelConfirmBooking] = useState<BookingListItem | null>(null);
 
   const resendMutation = useMutation({
@@ -74,6 +75,25 @@ export function PropertyBookingsPage() {
     },
   });
 
+  const downloadReceiptMutation = useMutation({
+    mutationFn: async ({ bookingId }: { bookingId: string }) =>
+      fetchBookingReceipt(propertyId, bookingId),
+    onSuccess: (data) => {
+      const url = URL.createObjectURL(data.blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = data.fileName || "receipt.pdf";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      setReceiptNotice("Receipt PDF downloaded.");
+    },
+    onError: () => {
+      setReceiptNotice(null);
+    },
+  });
+
   useEffect(() => {
     if (!resendNotice) return;
     const t = window.setTimeout(() => setResendNotice(null), 4000);
@@ -85,6 +105,12 @@ export function PropertyBookingsPage() {
     const t = window.setTimeout(() => setStatusNotice(null), 4000);
     return () => window.clearTimeout(t);
   }, [statusNotice]);
+
+  useEffect(() => {
+    if (!receiptNotice) return;
+    const t = window.setTimeout(() => setReceiptNotice(null), 4000);
+    return () => window.clearTimeout(t);
+  }, [receiptNotice]);
 
   const bookingsQuery = useApiQuery<ListBookingsResponse>(
     ["bookings", propertyId],
@@ -186,6 +212,11 @@ export function PropertyBookingsPage() {
               {statusNotice}
             </p>
           ) : null}
+          {receiptNotice ? (
+            <p className="text-sm text-emerald-600 dark:text-emerald-400" role="status">
+              {receiptNotice}
+            </p>
+          ) : null}
           {resendMutation.isError ? (
             <p className="text-sm text-destructive" role="alert">
               {resendMutation.error.message}
@@ -199,6 +230,11 @@ export function PropertyBookingsPage() {
           {cancelBookingMutation.isError ? (
             <p className="text-sm text-destructive" role="alert">
               {cancelBookingMutation.error.message}
+            </p>
+          ) : null}
+          {downloadReceiptMutation.isError ? (
+            <p className="text-sm text-destructive" role="alert">
+              {downloadReceiptMutation.error.message}
             </p>
           ) : null}
         </div>
@@ -282,6 +318,10 @@ export function PropertyBookingsPage() {
                   cancelBookingMutation.isPending && cancelBookingMutation.variables?.bookingId === b._id
                 }
                 onCancelBooking={() => setCancelConfirmBooking(b)}
+                downloadReceiptPending={
+                  downloadReceiptMutation.isPending && downloadReceiptMutation.variables?.bookingId === b._id
+                }
+                onDownloadReceipt={() => downloadReceiptMutation.mutate({ bookingId: b._id })}
               />
               );
             })}
