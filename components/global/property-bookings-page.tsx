@@ -7,6 +7,14 @@ import type { ListRoomsResponse, RoomListItem } from "@/api-clients/rooms";
 import { BookingListItemRow } from "@/components/global/booking-list-item";
 import { CreateBookingDialog } from "@/components/global/create-booking-dialog";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useApiQuery } from "@/hooks";
 import { PlusIcon } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
@@ -30,6 +38,7 @@ export function PropertyBookingsPage() {
   }>({ open: false, booking: null, roomAmount: 0 });
   const [resendNotice, setResendNotice] = useState<string | null>(null);
   const [statusNotice, setStatusNotice] = useState<string | null>(null);
+  const [cancelConfirmBooking, setCancelConfirmBooking] = useState<BookingListItem | null>(null);
 
   const resendMutation = useMutation({
     mutationFn: (bookingId: string) => resendConfirmationEmail(propertyId, bookingId),
@@ -129,6 +138,32 @@ export function PropertyBookingsPage() {
 
   function openDetails(booking: BookingListItem, roomAmount: number) {
     setDetailsDialog({ open: true, booking, roomAmount });
+  }
+
+  function buildBookingUpdatePayload(booking: BookingListItem, status: "completed" | "cancelled") {
+    return {
+      guestName: booking.guestName,
+      guestEmail: booking.guestEmail,
+      guestPhone: booking.guestPhone,
+      specialRequests: booking.specialRequests,
+      checkIn: booking.checkIn,
+      checkOut: booking.checkOut,
+      numberOfGuests: booking.numberOfGuests,
+      selectedOptions: booking.selectedOptions,
+      customItems: booking.customItems,
+      discount: booking.discount,
+      advanceAmount: booking.advanceAmount,
+      rooms: Object.fromEntries(
+        Object.entries(booking.rooms).map(([roomId, row]) => [
+          roomId,
+          {
+            quantity: row.quantity,
+            roomNumbers: row.roomNumbers,
+          },
+        ]),
+      ),
+      status,
+    } satisfies Parameters<typeof updateBooking>[2];
   }
 
   return (
@@ -239,62 +274,13 @@ export function PropertyBookingsPage() {
                 onMarkCompleted={() =>
                   markCompletedMutation.mutate({
                     bookingId: b._id,
-                    payload: {
-                      guestName: b.guestName,
-                      guestEmail: b.guestEmail,
-                      guestPhone: b.guestPhone,
-                      specialRequests: b.specialRequests,
-                      checkIn: b.checkIn,
-                      checkOut: b.checkOut,
-                      numberOfGuests: b.numberOfGuests,
-                      selectedOptions: b.selectedOptions,
-                      customItems: b.customItems,
-                      discount: b.discount,
-                      advanceAmount: b.advanceAmount,
-                      rooms: Object.fromEntries(
-                        Object.entries(b.rooms).map(([roomId, row]) => [
-                          roomId,
-                          {
-                            quantity: row.quantity,
-                            roomNumbers: row.roomNumbers,
-                          },
-                        ]),
-                      ),
-                      status: "completed",
-                    },
+                    payload: buildBookingUpdatePayload(b, "completed"),
                   })
                 }
                 cancelBookingPending={
                   cancelBookingMutation.isPending && cancelBookingMutation.variables?.bookingId === b._id
                 }
-                onCancelBooking={() =>
-                  cancelBookingMutation.mutate({
-                    bookingId: b._id,
-                    payload: {
-                      guestName: b.guestName,
-                      guestEmail: b.guestEmail,
-                      guestPhone: b.guestPhone,
-                      specialRequests: b.specialRequests,
-                      checkIn: b.checkIn,
-                      checkOut: b.checkOut,
-                      numberOfGuests: b.numberOfGuests,
-                      selectedOptions: b.selectedOptions,
-                      customItems: b.customItems,
-                      discount: b.discount,
-                      advanceAmount: b.advanceAmount,
-                      rooms: Object.fromEntries(
-                        Object.entries(b.rooms).map(([roomId, row]) => [
-                          roomId,
-                          {
-                            quantity: row.quantity,
-                            roomNumbers: row.roomNumbers,
-                          },
-                        ]),
-                      ),
-                      status: "cancelled",
-                    },
-                  })
-                }
+                onCancelBooking={() => setCancelConfirmBooking(b)}
               />
               );
             })}
@@ -343,6 +329,49 @@ export function PropertyBookingsPage() {
           router.push(`/${propertyId}/bookings/${booking._id}/check-in`);
         }}
       />
+
+      <Dialog
+        open={Boolean(cancelConfirmBooking)}
+        onOpenChange={(open) => {
+          if (!open && !cancelBookingMutation.isPending) {
+            setCancelConfirmBooking(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cancel booking?</DialogTitle>
+            <DialogDescription>
+              {cancelConfirmBooking
+                ? `This will mark ${cancelConfirmBooking.guestName}'s booking as cancelled. This action can be reversed by editing the booking status later.`
+                : "Confirm cancellation"}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter showCloseButton>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={!cancelConfirmBooking || cancelBookingMutation.isPending}
+              onClick={() => {
+                if (!cancelConfirmBooking) return;
+                cancelBookingMutation.mutate(
+                  {
+                    bookingId: cancelConfirmBooking._id,
+                    payload: buildBookingUpdatePayload(cancelConfirmBooking, "cancelled"),
+                  },
+                  {
+                    onSuccess: () => {
+                      setCancelConfirmBooking(null);
+                    },
+                  },
+                );
+              }}
+            >
+              {cancelBookingMutation.isPending ? "Cancelling..." : "Yes, cancel booking"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
