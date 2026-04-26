@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  BarChart3Icon,
   BedDoubleIcon,
   CalendarRangeIcon,
   ClipboardListIcon,
@@ -55,6 +56,15 @@ export function getPropertyNavItems(propertyId: string): PropertyNavItem[] {
       match: (pathname, id) => pathname.startsWith(`/${id}/bookings`),
     },
     {
+      id: "room_availability",
+      href: `${base}/room-availability`,
+      label: "Room availability",
+      shortLabel: "Calendar",
+      group: "daily",
+      icon: CalendarRangeIcon,
+      match: (pathname, id) => pathname.startsWith(`/${id}/room-availability`),
+    },
+    {
       id: "customers",
       href: `${base}/customers`,
       label: "Customers",
@@ -64,13 +74,13 @@ export function getPropertyNavItems(propertyId: string): PropertyNavItem[] {
       match: (pathname, id) => pathname.startsWith(`/${id}/customers`),
     },
     {
-      id: "room_availability",
-      href: `${base}/room-availability`,
-      label: "Room availability",
-      shortLabel: "Calendar",
+      id: "report",
+      href: `${base}/report`,
+      label: "Report",
+      shortLabel: "Report",
       group: "daily",
-      icon: CalendarRangeIcon,
-      match: (pathname, id) => pathname.startsWith(`/${id}/room-availability`),
+      icon: BarChart3Icon,
+      match: (pathname, id) => pathname.startsWith(`/${id}/report`),
     },
     {
       id: "rooms",
