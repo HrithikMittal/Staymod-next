@@ -187,7 +187,7 @@ export async function GET(_req: Request, context: RouteContext) {
     const rightH = drawWrappedText(rightValue || "-", rightX, y - 14, cardW / 2 - padX - 14, 11);
     y -= Math.max(leftH, rightH) + 20;
   };
-  writeTwoCol("Guest", booking.guestName, "Guests", String(booking.guests));
+  writeTwoCol("Guest", booking.guestName, "Guests", String(booking.numberOfGuests ?? 1));
 
   drawText("ROOM", cardX + padX, y, 8, false, textMuted);
   y -= 14;

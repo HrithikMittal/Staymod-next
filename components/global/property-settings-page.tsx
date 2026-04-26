@@ -3,7 +3,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useState } from "react";
 
-import { fetchProperty, updatePropertySettings, type PropertyDetails } from "@/api-clients/properties";
+import { updatePropertySettings, type PropertyDetails } from "@/api-clients/properties";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +20,7 @@ export function PropertySettingsPage({ propertyId }: PropertySettingsPageProps) 
   const propertyQuery = useApiQuery<{ property: PropertyDetails }>(
     ["property", propertyId],
     `/api/properties/${propertyId}`,
-    () => fetchProperty(propertyId),
+    undefined,
     { enabled: Boolean(propertyId) },
   );
 
