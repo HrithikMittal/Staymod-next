@@ -134,6 +134,19 @@ export function PropertyDashboardPage() {
       .slice(0, 8);
   }, [bookingsQuery.data?.bookings]);
 
+  const todayMovements = useMemo(() => {
+    const list = bookingsQuery.data?.bookings ?? [];
+    const todayKey = todayKeyInTimeZone(timeZone);
+    const eligible = list.filter((b) => b.status !== "cancelled" && b.status !== "no_show");
+    const checkIns = eligible
+      .filter((b) => dateKeyInTimeZone(b.checkIn, timeZone) === todayKey)
+      .sort((a, b) => new Date(a.checkIn).getTime() - new Date(b.checkIn).getTime());
+    const checkOuts = eligible
+      .filter((b) => dateKeyInTimeZone(b.checkOut, timeZone) === todayKey)
+      .sort((a, b) => new Date(a.checkOut).getTime() - new Date(b.checkOut).getTime());
+    return { checkIns, checkOuts };
+  }, [bookingsQuery.data?.bookings, timeZone]);
+
   const loading =
     propertyQuery.isLoading || bookingsQuery.isLoading || roomsQuery.isLoading;
   const error = propertyQuery.error ?? bookingsQuery.error ?? roomsQuery.error;
@@ -219,6 +232,82 @@ export function PropertyDashboardPage() {
                 valueClassName="text-lg tabular-nums"
               />
             </motion.div>
+          </section>
+
+          <section className="grid gap-6 lg:grid-cols-2">
+            <div>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <h2 className="text-sm font-semibold text-foreground">Today check-ins</h2>
+                <Link
+                  href={`/${propertyId}/bookings`}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                >
+                  View all
+                  <ArrowRightIcon className="size-3.5" />
+                </Link>
+              </div>
+              <div className="overflow-hidden rounded-lg border border-border/50 bg-card shadow-[0_0_0_1px_oklch(1_0_0_/_0.02),_0_4px_12px_oklch(0_0_0_/_0.2)]">
+                {todayMovements.checkIns.length === 0 ? (
+                  <p className="px-4 py-8 text-sm text-muted-foreground">No check-ins today.</p>
+                ) : (
+                  <ul className="divide-y divide-border/40">
+                    {todayMovements.checkIns.map((b) => (
+                      <li
+                        key={b._id}
+                        className="flex flex-col gap-0.5 px-4 py-3 transition-colors hover:bg-muted/20 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">{b.guestName}</p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {bookingRoomSummary(b, roomNameById)}
+                          </p>
+                        </div>
+                        <p className="shrink-0 text-xs capitalize text-muted-foreground">
+                          {b.status.replace(/_/g, " ")}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <h2 className="text-sm font-semibold text-foreground">Today check-outs</h2>
+                <Link
+                  href={`/${propertyId}/bookings`}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                >
+                  View all
+                  <ArrowRightIcon className="size-3.5" />
+                </Link>
+              </div>
+              <div className="overflow-hidden rounded-lg border border-border/50 bg-card shadow-[0_0_0_1px_oklch(1_0_0_/_0.02),_0_4px_12px_oklch(0_0_0_/_0.2)]">
+                {todayMovements.checkOuts.length === 0 ? (
+                  <p className="px-4 py-8 text-sm text-muted-foreground">No check-outs today.</p>
+                ) : (
+                  <ul className="divide-y divide-border/40">
+                    {todayMovements.checkOuts.map((b) => (
+                      <li
+                        key={b._id}
+                        className="flex flex-col gap-0.5 px-4 py-3 transition-colors hover:bg-muted/20 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">{b.guestName}</p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {bookingRoomSummary(b, roomNameById)}
+                          </p>
+                        </div>
+                        <p className="shrink-0 text-xs capitalize text-muted-foreground">
+                          {b.status.replace(/_/g, " ")}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
           </section>
 
           <section className="grid gap-6 lg:grid-cols-2">
