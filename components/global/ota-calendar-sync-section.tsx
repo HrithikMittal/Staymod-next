@@ -57,7 +57,7 @@ function RoomCalendarCard({ room, propertyId, origin }: RoomCalendarCardProps) {
   };
 
   const icalUrl = room.icalToken
-    ? `${origin}/api/public/ical/rooms/${room._id}?token=${room.icalToken}`
+    ? `${origin}/api/public/ical/rooms/${room._id}/${room.icalToken}.ics`
     : null;
 
   const handleCopy = async () => {
