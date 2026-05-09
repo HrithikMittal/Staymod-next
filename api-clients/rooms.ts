@@ -34,6 +34,7 @@ export type RoomListItem = {
   amenities: string[];
   isActive: boolean;
   sortOrder: number;
+  icalToken?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -122,5 +123,12 @@ export function createRoomImageUploadUrl(
 export function deleteRoom(propertyId: string, roomId: string) {
   return apiFetch<{ deleted: boolean }>(`/api/properties/${propertyId}/rooms/${roomId}`, {
     method: "DELETE",
+  });
+}
+
+export function generateRoomIcalToken(propertyId: string, roomId: string) {
+  return apiFetch<{ room: RoomListItem }>(`/api/properties/${propertyId}/rooms/${roomId}`, {
+    method: "PATCH",
+    json: { generateIcalToken: true },
   });
 }
