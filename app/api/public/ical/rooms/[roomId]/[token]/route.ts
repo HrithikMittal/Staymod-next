@@ -34,15 +34,29 @@ export async function GET(
     const db = await getDb();
     const roomObjectId = new ObjectId(roomId);
 
-    // Find room by ID and token (security check)
+    // Find room by ID (no token check yet - we'll validate below)
     const room = await db.collection<Room>("rooms").findOne({
       _id: roomObjectId,
-      icalToken: token,
     });
 
     if (!room) {
       return NextResponse.json(
-        { error: "Room not found or invalid token" },
+        { error: "Room not found" },
+        { status: 404 }
+      );
+    }
+
+    // Determine token type and validate
+    const isCombinedFeed = room.icalToken === token;
+    const roomNumberForToken = !isCombinedFeed
+      ? Object.entries(room.icalTokensByRoomNumber || {})
+          .find(([_, t]) => t === token)?.[0]
+      : null;
+
+    // Validate token matches either type
+    if (!isCombinedFeed && !roomNumberForToken) {
+      return NextResponse.json(
+        { error: "Invalid token" },
         { status: 404 }
       );
     }
@@ -92,11 +106,35 @@ export async function GET(
       })
       .toArray();
 
+    // Filter bookings by room number if per-number feed
+    const filteredBookings = isCombinedFeed
+      ? bookings
+      : bookings.filter(booking => {
+          // Check multi-room format
+          const allocation = booking.rooms?.[roomId];
+          if (roomNumberForToken && allocation?.roomNumbers?.includes(roomNumberForToken)) {
+            return true;
+          }
+
+          // Check legacy single-room format (no per-number granularity)
+          // Include in all per-number feeds as fallback
+          if (booking.roomId?.toString() === roomId && !booking.rooms) {
+            return true;
+          }
+
+          return false;
+        });
+
+    // Generate calendar name based on feed type
+    const calendarName = isCombinedFeed
+      ? `${room.name} - ${property.name}`
+      : `${room.name} (Room ${roomNumberForToken}) - ${property.name}`;
+
     // Generate iCal feed
     const icalContent = generateIcalFeed(
-      bookings,
+      filteredBookings,
       roomId,
-      room.name,
+      calendarName,
       property.name
     );
 
