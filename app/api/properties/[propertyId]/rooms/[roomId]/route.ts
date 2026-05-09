@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 
@@ -62,10 +63,52 @@ export async function PATCH(req: Request, context: RouteContext) {
     return resolved.error;
   }
 
-  const { db, propertyObjectId, roomObjectId } = resolved;
+  const { db, propertyObjectId, roomObjectId, room } = resolved;
 
   try {
     const payload = await req.json();
+
+    // Handle iCal token generation request
+    if (payload.generateIcalToken === true) {
+      // If token already exists, return current room (idempotent)
+      if (room.icalToken) {
+        const tagsById = await loadRoomTagsByIds(
+          db,
+          orgId,
+          propertyObjectId,
+          [...(room.tagIds ?? []), ...((room.roomImages ?? []).flatMap((img) => img.tagIds ?? []))],
+        );
+        return NextResponse.json({ room: serializeRoomForApi(room, tagsById) });
+      }
+
+      // Generate new token
+      const icalToken = crypto.randomUUID();
+      const now = new Date();
+
+      await db.collection<Room>(ROOMS_COLLECTION).updateOne(
+        { _id: roomObjectId },
+        {
+          $set: {
+            icalToken,
+            updatedAt: now,
+          },
+        },
+      );
+
+      const updatedRoom = await db.collection<Room>(ROOMS_COLLECTION).findOne({ _id: roomObjectId });
+      if (!updatedRoom) {
+        return NextResponse.json({ error: "Room not found after token generation." }, { status: 404 });
+      }
+
+      const tagsById = await loadRoomTagsByIds(
+        db,
+        orgId,
+        propertyObjectId,
+        [...(updatedRoom.tagIds ?? []), ...((updatedRoom.roomImages ?? []).flatMap((img) => img.tagIds ?? []))],
+      );
+      return NextResponse.json({ room: serializeRoomForApi(updatedRoom, tagsById) });
+    }
+
     const input = parseCreateRoomInput(payload);
     const { tagNames = [], ...parsedRoomInput } = input;
     const tagIds = await ensureRoomTagIds(db, orgId, propertyObjectId, tagNames);
