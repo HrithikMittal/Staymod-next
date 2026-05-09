@@ -5,7 +5,7 @@ import { CopyIcon, ExternalLinkIcon, LoaderIcon } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import { toast } from "react-toastify";
 
-import { generateRoomIcalToken, type RoomListItem } from "@/api-clients/rooms";
+import { generateRoomIcalToken, generateRoomIcalTokensByRoomNumber, type RoomListItem } from "@/api-clients/rooms";
 import {
   Accordion,
   AccordionContent,
@@ -36,41 +36,55 @@ type RoomCalendarCardProps = {
 };
 
 /**
- * Individual room card showing iCal URL with copy-to-clipboard functionality.
- * Handles token generation on-demand when room doesn't have one yet.
+ * Individual room card showing iCal URL(s) with copy-to-clipboard functionality.
+ * For multi-unit rooms, shows two sections: combined and per-number feeds.
  */
 function RoomCalendarCard({ room, propertyId, origin }: RoomCalendarCardProps) {
   const queryClient = useQueryClient();
-  const generateTokenMutation = useMutation({
+
+  const generateCombinedTokenMutation = useMutation({
     mutationFn: () => generateRoomIcalToken(propertyId, room._id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["rooms", propertyId] });
-      toast.success("Calendar URL generated successfully");
+      toast.success("Combined calendar URL generated");
     },
     onError: () => {
-      toast.error("Failed to generate calendar URL");
+      toast.error("Failed to generate combined calendar URL");
     },
   });
 
-  const handleGenerate = () => {
-    generateTokenMutation.mutate();
+  const generatePerNumberTokensMutation = useMutation({
+    mutationFn: () => generateRoomIcalTokensByRoomNumber(propertyId, room._id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["rooms", propertyId] });
+      toast.success("Per-room-number calendar URLs generated");
+    },
+    onError: () => {
+      toast.error("Failed to generate per-room-number URLs");
+    },
+  });
+
+  const handleGenerateCombined = () => {
+    generateCombinedTokenMutation.mutate();
   };
 
-  const icalUrl = room.icalToken
+  const handleGeneratePerNumber = () => {
+    generatePerNumberTokensMutation.mutate();
+  };
+
+  const combinedIcalUrl = room.icalToken
     ? `${origin}/api/public/ical/rooms/${room._id}/${room.icalToken}.ics`
     : null;
 
-  const handleCopy = async () => {
-    if (!icalUrl) return;
-
+  const handleCopy = async (url: string, label: string) => {
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(icalUrl);
-        toast.success("Calendar URL copied to clipboard");
+        await navigator.clipboard.writeText(url);
+        toast.success(`${label} URL copied to clipboard`);
       } else {
         // Fallback for older browsers or insecure contexts
         const textarea = document.createElement("textarea");
-        textarea.value = icalUrl;
+        textarea.value = url;
         textarea.style.position = "fixed";
         textarea.style.opacity = "0";
         document.body.appendChild(textarea);
@@ -78,7 +92,7 @@ function RoomCalendarCard({ room, propertyId, origin }: RoomCalendarCardProps) {
         const success = document.execCommand("copy");
         document.body.removeChild(textarea);
         if (success) {
-          toast.success("Calendar URL copied to clipboard");
+          toast.success(`${label} URL copied to clipboard`);
         } else {
           toast.error("Failed to copy URL");
         }
@@ -88,53 +102,188 @@ function RoomCalendarCard({ room, propertyId, origin }: RoomCalendarCardProps) {
     }
   };
 
+  const isMultiUnit = room.roomNumbers && room.roomNumbers.length > 1;
+
   return (
     <div className="rounded-lg border border-border bg-card p-4">
-      <div className="mb-3 flex items-start justify-between">
-        <div>
-          <h3 className="font-semibold text-foreground">{room.name}</h3>
-          <p className="text-sm text-muted-foreground">
-            {room.type.replace(/_/g, " ")}
-          </p>
-        </div>
-        {!room.icalToken && (
-          <Button
-            size="sm"
-            onClick={handleGenerate}
-            disabled={generateTokenMutation.isPending}
-          >
-            {generateTokenMutation.isPending && (
-              <LoaderIcon className="animate-spin" />
-            )}
-            Generate URL
-          </Button>
-        )}
+      <div className="mb-3">
+        <h3 className="font-semibold text-foreground">{room.name}</h3>
+        <p className="text-sm text-muted-foreground">
+          {room.type.replace(/_/g, " ")}
+          {isMultiUnit && ` • ${room.roomNumbers?.length} units: ${room.roomNumbers?.join(", ")}`}
+        </p>
       </div>
 
-      {icalUrl ? (
-        <div className="space-y-2">
-          <Label htmlFor={`ical-url-${room._id}`}>Calendar URL</Label>
-          <div className="flex gap-2">
-            <Input
-              id={`ical-url-${room._id}`}
-              value={icalUrl}
-              readOnly
-              className="font-mono text-xs"
-            />
+      {!isMultiUnit ? (
+        // Single-unit room: show simple single-URL UI
+        <>
+          {!room.icalToken && (
             <Button
-              size="icon-sm"
-              variant="outline"
-              onClick={handleCopy}
-              aria-label="Copy URL"
+              size="sm"
+              onClick={handleGenerateCombined}
+              disabled={generateCombinedTokenMutation.isPending}
+              className="mb-3"
             >
-              <CopyIcon />
+              {generateCombinedTokenMutation.isPending && (
+                <LoaderIcon className="animate-spin" />
+              )}
+              Generate URL
             </Button>
+          )}
+
+          {combinedIcalUrl ? (
+            <div className="space-y-2">
+              <Label htmlFor={`ical-url-${room._id}`}>iCal Feed URL</Label>
+              <div className="flex gap-2">
+                <Input
+                  id={`ical-url-${room._id}`}
+                  value={combinedIcalUrl}
+                  readOnly
+                  className="font-mono text-xs"
+                />
+                <Button
+                  size="icon-sm"
+                  variant="outline"
+                  onClick={() => handleCopy(combinedIcalUrl, "Calendar")}
+                  aria-label="Copy URL"
+                >
+                  <CopyIcon />
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">✓ Ready to use</p>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Generate a calendar URL to sync this room with OTA platforms
+            </p>
+          )}
+        </>
+      ) : (
+        // Multi-unit room: show two-section layout
+        <div className="space-y-6">
+          {/* Combined Calendar Section */}
+          <div>
+            <div className="mb-2 border-b border-border pb-1">
+              <h4 className="text-sm font-semibold text-foreground">
+                Combined Calendar (All Units)
+              </h4>
+              <p className="text-xs text-muted-foreground">
+                Use when OTA lists as single room with quantity
+              </p>
+            </div>
+
+            {!room.icalToken && (
+              <Button
+                size="sm"
+                onClick={handleGenerateCombined}
+                disabled={generateCombinedTokenMutation.isPending}
+                className="mb-2"
+              >
+                {generateCombinedTokenMutation.isPending && (
+                  <LoaderIcon className="animate-spin" />
+                )}
+                Generate Combined URL
+              </Button>
+            )}
+
+            {combinedIcalUrl ? (
+              <div className="space-y-2">
+                <Label htmlFor={`ical-combined-${room._id}`} className="text-xs">
+                  iCal Feed URL
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id={`ical-combined-${room._id}`}
+                    value={combinedIcalUrl}
+                    readOnly
+                    className="font-mono text-xs"
+                  />
+                  <Button
+                    size="icon-sm"
+                    variant="outline"
+                    onClick={() => handleCopy(combinedIcalUrl, "Combined calendar")}
+                    aria-label="Copy combined URL"
+                  >
+                    <CopyIcon />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">✓ Ready to use</p>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Generate URL to sync all room numbers together
+              </p>
+            )}
+          </div>
+
+          {/* Per Room Number Section */}
+          <div>
+            <div className="mb-2 border-b border-border pb-1">
+              <h4 className="text-sm font-semibold text-foreground">Per Room Number</h4>
+              <p className="text-xs text-muted-foreground">
+                Use when each room is a separate OTA listing
+              </p>
+            </div>
+
+            {!room.icalTokensByRoomNumber && (
+              <Button
+                size="sm"
+                onClick={handleGeneratePerNumber}
+                disabled={generatePerNumberTokensMutation.isPending}
+                className="mb-2"
+              >
+                {generatePerNumberTokensMutation.isPending && (
+                  <LoaderIcon className="animate-spin" />
+                )}
+                Generate Per-Number URLs
+              </Button>
+            )}
+
+            {room.icalTokensByRoomNumber ? (
+              <div className="space-y-3">
+                {room.roomNumbers?.map((roomNumber) => {
+                  const token = room.icalTokensByRoomNumber?.[roomNumber];
+                  const url = token
+                    ? `${origin}/api/public/ical/rooms/${room._id}/${token}.ics`
+                    : null;
+
+                  return (
+                    <div key={roomNumber} className="space-y-1">
+                      <Label
+                        htmlFor={`ical-${room._id}-${roomNumber}`}
+                        className="text-xs font-medium"
+                      >
+                        Room {roomNumber}
+                      </Label>
+                      {url && (
+                        <div className="flex gap-2">
+                          <Input
+                            id={`ical-${room._id}-${roomNumber}`}
+                            value={url}
+                            readOnly
+                            className="font-mono text-xs"
+                          />
+                          <Button
+                            size="icon-sm"
+                            variant="outline"
+                            onClick={() => handleCopy(url, `Room ${roomNumber}`)}
+                            aria-label={`Copy URL for room ${roomNumber}`}
+                          >
+                            <CopyIcon />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Generate separate URLs for each room number
+              </p>
+            )}
           </div>
         </div>
-      ) : (
-        <p className="text-sm text-muted-foreground">
-          Generate a calendar URL to sync this room with OTA platforms
-        </p>
       )}
     </div>
   );
