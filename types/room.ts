@@ -92,6 +92,8 @@ export type Room = OrganizationScope & {
   isActive: boolean;
   /** Lower sorts first when listing rooms. */
   sortOrder: number;
+  /** UUID v4 token for public iCal feed access. Generated on-demand. */
+  icalToken?: string;
   createdAt: Date;
   updatedAt: Date;
 };
