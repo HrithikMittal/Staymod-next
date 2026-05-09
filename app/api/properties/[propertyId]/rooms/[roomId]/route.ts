@@ -109,6 +109,41 @@ export async function PATCH(req: Request, context: RouteContext) {
       return NextResponse.json({ room: serializeRoomForApi(updatedRoom, tagsById) });
     }
 
+    // Generate per-room-number iCal tokens
+    if (payload.generateIcalTokensByRoomNumber === true) {
+      if (!room.roomNumbers || room.roomNumbers.length === 0) {
+        return NextResponse.json(
+          { error: "Room has no room numbers to generate tokens for" },
+          { status: 400 }
+        );
+      }
+
+      const existingTokens = room.icalTokensByRoomNumber || {};
+      const newTokens: Record<string, string> = {};
+
+      // Generate UUID for each room number (idempotent - reuse existing)
+      for (const roomNumber of room.roomNumbers) {
+        newTokens[roomNumber] = existingTokens[roomNumber] || crypto.randomUUID();
+      }
+
+      const now = new Date();
+
+      // Update room with new tokens
+      await db.collection<Room>(ROOMS_COLLECTION).updateOne(
+        { _id: roomObjectId },
+        { $set: { icalTokensByRoomNumber: newTokens, updatedAt: now } }
+      );
+
+      room.icalTokensByRoomNumber = newTokens;
+      const tagsById = await loadRoomTagsByIds(
+        db,
+        orgId,
+        propertyObjectId,
+        [...(room.tagIds ?? []), ...((room.roomImages ?? []).flatMap((img) => img.tagIds ?? []))],
+      );
+      return NextResponse.json({ room: serializeRoomForApi(room, tagsById) });
+    }
+
     const input = parseCreateRoomInput(payload);
     const { tagNames = [], ...parsedRoomInput } = input;
     const tagIds = await ensureRoomTagIds(db, orgId, propertyObjectId, tagNames);
