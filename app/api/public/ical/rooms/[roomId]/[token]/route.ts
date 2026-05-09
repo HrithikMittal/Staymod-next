@@ -134,8 +134,7 @@ export async function GET(
     const icalContent = generateIcalFeed(
       filteredBookings,
       roomId,
-      calendarName,
-      property.name
+      calendarName
     );
 
     // Return with appropriate headers

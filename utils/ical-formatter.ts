@@ -141,15 +141,13 @@ export function buildVEvent(booking: Booking, roomId: string, now: Date): string
  * Generate a complete iCal feed for bookings.
  * @param bookings - Array of bookings to include
  * @param roomId - Room ID for the feed
- * @param roomName - Room name for the feed
- * @param propertyName - Property name for the feed
+ * @param calendarName - Calendar name to display in X-WR-CALNAME header
  * @returns Complete VCALENDAR string
  */
 export function generateIcalFeed(
   bookings: Booking[],
   roomId: string,
-  roomName: string,
-  propertyName: string
+  calendarName: string
 ): string {
   const now = new Date();
   const lines: string[] = [];
@@ -160,7 +158,7 @@ export function generateIcalFeed(
   lines.push("PRODID:-//Staymod//Calendar Sync//EN");
   lines.push("CALSCALE:GREGORIAN");
   lines.push("METHOD:PUBLISH");
-  lines.push(`X-WR-CALNAME:${escapeIcalText(roomName)} - ${escapeIcalText(propertyName)}`);
+  lines.push(`X-WR-CALNAME:${escapeIcalText(calendarName)}`);
   lines.push("X-WR-TIMEZONE:UTC");
 
   // Add events for each booking

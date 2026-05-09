@@ -238,38 +238,38 @@ describe("generateIcalFeed", () => {
   const bookings = [mockBooking];
 
   test("starts with BEGIN:VCALENDAR", () => {
-    const feed = generateIcalFeed(bookings, "room_101", "Deluxe Room 101", "Grand Hotel");
+    const feed = generateIcalFeed(bookings, "room_101", "Deluxe Room 101 - Grand Hotel");
     expect(feed).toContain("BEGIN:VCALENDAR");
   });
 
   test("ends with END:VCALENDAR", () => {
-    const feed = generateIcalFeed(bookings, "room_101", "Deluxe Room 101", "Grand Hotel");
+    const feed = generateIcalFeed(bookings, "room_101", "Deluxe Room 101 - Grand Hotel");
     expect(feed).toContain("END:VCALENDAR");
   });
 
   test("includes version", () => {
-    const feed = generateIcalFeed(bookings, "room_101", "Deluxe Room 101", "Grand Hotel");
+    const feed = generateIcalFeed(bookings, "room_101", "Deluxe Room 101 - Grand Hotel");
     expect(feed).toContain("VERSION:2.0");
   });
 
   test("includes product ID without 'OTA'", () => {
-    const feed = generateIcalFeed(bookings, "room_101", "Deluxe Room 101", "Grand Hotel");
+    const feed = generateIcalFeed(bookings, "room_101", "Deluxe Room 101 - Grand Hotel");
     expect(feed).toContain("PRODID:-//Staymod//Calendar Sync//EN");
     expect(feed).not.toContain("OTA Calendar Sync");
   });
 
   test("includes calendar name", () => {
-    const feed = generateIcalFeed(bookings, "room_101", "Deluxe Room 101", "Grand Hotel");
+    const feed = generateIcalFeed(bookings, "room_101", "Deluxe Room 101 - Grand Hotel");
     expect(feed).toContain("X-WR-CALNAME:Deluxe Room 101 - Grand Hotel");
   });
 
   test("does not include X-WR-CALDESC", () => {
-    const feed = generateIcalFeed(bookings, "room_101", "Deluxe Room 101", "Grand Hotel");
+    const feed = generateIcalFeed(bookings, "room_101", "Deluxe Room 101 - Grand Hotel");
     expect(feed).not.toContain("X-WR-CALDESC:");
   });
 
   test("includes at least one event", () => {
-    const feed = generateIcalFeed(bookings, "room_101", "Deluxe Room 101", "Grand Hotel");
+    const feed = generateIcalFeed(bookings, "room_101", "Deluxe Room 101 - Grand Hotel");
     expect(feed).toContain("BEGIN:VEVENT");
   });
 
@@ -278,14 +278,13 @@ describe("generateIcalFeed", () => {
     const feedWithCancelled = generateIcalFeed(
       [cancelledBooking],
       "room_101",
-      "Deluxe Room 101",
-      "Grand Hotel"
+      "Deluxe Room 101 - Grand Hotel"
     );
     expect(feedWithCancelled).not.toContain("BEGIN:VEVENT");
   });
 
   test("includes confirmed bookings", () => {
-    const feed = generateIcalFeed(bookings, "room_101", "Deluxe Room 101", "Grand Hotel");
+    const feed = generateIcalFeed(bookings, "room_101", "Deluxe Room 101 - Grand Hotel");
     expect(feed).toContain("BEGIN:VEVENT");
   });
 
@@ -294,8 +293,7 @@ describe("generateIcalFeed", () => {
     const feed = generateIcalFeed(
       [checkedInBooking],
       "room_101",
-      "Deluxe Room 101",
-      "Grand Hotel"
+      "Deluxe Room 101 - Grand Hotel"
     );
     expect(feed).toContain("BEGIN:VEVENT");
   });
@@ -305,8 +303,7 @@ describe("generateIcalFeed", () => {
     const feed = generateIcalFeed(
       [completedBooking],
       "room_101",
-      "Deluxe Room 101",
-      "Grand Hotel"
+      "Deluxe Room 101 - Grand Hotel"
     );
     expect(feed).toContain("BEGIN:VEVENT");
   });
