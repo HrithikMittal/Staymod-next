@@ -3,7 +3,6 @@
  * Run with: npm test -- __tests__/utils/ical-formatter.test.ts
  */
 
-import { describe, expect, test } from "@jest/globals";
 import { ObjectId } from "mongodb";
 import type { Booking } from "@/types/booking";
 import {
@@ -15,6 +14,13 @@ import {
   generateIcalFeed,
 } from "@/utils/ical-formatter";
 
+// Use Jest globals directly (available in test environment)
+const { describe, expect, test } = globalThis as {
+  describe: typeof describe;
+  expect: typeof expect;
+  test: typeof test;
+};
+
 // Test data
 const mockBooking: Booking = {
   _id: new ObjectId("507f1f77bcf86cd799439011"),
@@ -22,7 +28,7 @@ const mockBooking: Booking = {
   propertyId: new ObjectId("507f1f77bcf86cd799439012"),
   rooms: {
     "room_101": {
-      roomType: "deluxe",
+      roomType: "suite",
       quantity: 1,
       roomNumbers: ["101", "102"],
     },
@@ -37,7 +43,7 @@ const mockBooking: Booking = {
   status: "confirmed",
   createdAt: new Date("2026-05-01T00:00:00Z"),
   updatedAt: new Date("2026-05-01T00:00:00Z"),
-} as any;
+};
 
 describe("formatIcalDate", () => {
   test("formats date to YYYYMMDD", () => {
@@ -149,7 +155,7 @@ describe("buildBookingDescription", () => {
       ...mockBooking,
       rooms: {
         "room_101": {
-          roomType: "deluxe" as const,
+          roomType: "suite" as const,
           quantity: 1,
         },
       },

@@ -83,7 +83,7 @@ function RoomCalendarCard({ room, propertyId, origin }: RoomCalendarCardProps) {
           toast.error("Failed to copy URL");
         }
       }
-    } catch (err) {
+    } catch {
       toast.error("Failed to copy URL");
     }
   };
