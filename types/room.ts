@@ -94,6 +94,8 @@ export type Room = OrganizationScope & {
   sortOrder: number;
   /** UUID v4 token for public iCal feed access. Generated on-demand. */
   icalToken?: string;
+  /** Map of room number to UUID v4 token for individual feeds. Generated on-demand for multi-unit rooms. */
+  icalTokensByRoomNumber?: Record<string, string>;
   createdAt: Date;
   updatedAt: Date;
 };
