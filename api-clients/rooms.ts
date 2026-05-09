@@ -35,6 +35,7 @@ export type RoomListItem = {
   isActive: boolean;
   sortOrder: number;
   icalToken?: string;
+  icalTokensByRoomNumber?: Record<string, string>;
   createdAt: string;
   updatedAt: string;
 };
@@ -130,5 +131,12 @@ export function generateRoomIcalToken(propertyId: string, roomId: string) {
   return apiFetch<{ room: RoomListItem }>(`/api/properties/${propertyId}/rooms/${roomId}`, {
     method: "PATCH",
     json: { generateIcalToken: true },
+  });
+}
+
+export function generateRoomIcalTokensByRoomNumber(propertyId: string, roomId: string) {
+  return apiFetch<{ room: RoomListItem }>(`/api/properties/${propertyId}/rooms/${roomId}`, {
+    method: "PATCH",
+    json: { generateIcalTokensByRoomNumber: true },
   });
 }
