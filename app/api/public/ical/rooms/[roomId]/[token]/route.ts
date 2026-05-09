@@ -18,7 +18,10 @@ export async function GET(
   context: { params: Promise<{ roomId: string; token: string }> }
 ): Promise<NextResponse> {
   try {
-    const { roomId, token } = await context.params;
+    const { roomId, token: rawToken } = await context.params;
+
+    // Strip .ics extension if present
+    const token = rawToken.endsWith('.ics') ? rawToken.slice(0, -4) : rawToken;
 
     // Validate ObjectId format
     if (!ObjectId.isValid(roomId)) {
