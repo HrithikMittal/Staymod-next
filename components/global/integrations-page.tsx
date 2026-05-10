@@ -4,6 +4,8 @@ import type { ApiKeyItem, ListApiKeysResponse } from "@/api-clients";
 import { createApiKey, deleteApiKey, updateApiKey } from "@/api-clients/api-keys";
 import { PropertyEmailSettingsSection } from "@/components/global/property-email-settings-section";
 import { OtaCalendarSyncSection } from "@/components/global/ota-calendar-sync-section";
+import { PropertyInboundSyncSection } from "@/components/global/property-inbound-sync-section";
+import { InboundSyncStats } from "@/components/global/inbound-sync-stats";
 import { CheckIcon, CopyIcon, ExternalLinkIcon } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useSyncExternalStore } from "react";
@@ -134,10 +136,20 @@ export function IntegrationsPage({ propertyId }: IntegrationsPageProps) {
 
       <div className="space-y-6">
           <SectionCard
-            title="OTA Calendar Sync"
+            title="OTA Calendar Sync (Outbound)"
             description="Export your Staymod bookings to OTA platforms to prevent double-bookings. One-way sync only."
           >
             <OtaCalendarSyncSection propertyId={propertyId} />
+          </SectionCard>
+
+          <SectionCard
+            title="Inbound Booking Sync (AI-Powered)"
+            description="Automatically import bookings from OTA confirmation emails using AI. Forward emails to a unique address and bookings are created automatically."
+          >
+            <div className="space-y-6">
+              <PropertyInboundSyncSection propertyId={propertyId} />
+              <InboundSyncStats propertyId={propertyId} />
+            </div>
           </SectionCard>
 
           <SectionCard
