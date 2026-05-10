@@ -57,6 +57,20 @@ export function BookingDetailsDialog({
             <p><strong>Guest:</strong> {booking.guestName}</p>
             <p><strong>Email:</strong> {booking.guestEmail?.trim() || "Not provided"}</p>
             <p><strong>Status:</strong> {booking.status.replace(/_/g, " ")}</p>
+
+            {booking.externalReference?.source && (
+              <div className="rounded-md border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30 p-2.5">
+                <p className="font-medium text-blue-900 dark:text-blue-100">
+                  Imported from {booking.externalReference.source}
+                </p>
+                {booking.externalReference.confirmationCode && (
+                  <p className="text-xs text-blue-700 dark:text-blue-300 mt-0.5">
+                    Confirmation: {booking.externalReference.confirmationCode}
+                  </p>
+                )}
+              </div>
+            )}
+
             <p><strong>Rooms:</strong> {roomSummary}</p>
             <p><strong>Stay:</strong> {formatRange(booking.checkIn, booking.checkOut)}</p>
             <p><strong>Nights:</strong> {nights}</p>
@@ -109,6 +123,38 @@ export function BookingDetailsDialog({
                 <strong>Total amount:</strong> {formatMoney(totalAmount)}
               </p>
             </div>
+
+            {booking.externalReference?.grossCharges != null && (
+              <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-3">
+                <p className="font-medium text-amber-900 dark:text-amber-100 mb-2">
+                  OTA Commission Breakdown
+                </p>
+                <div className="space-y-1 text-xs text-amber-800 dark:text-amber-200">
+                  {booking.externalReference.totalAmount != null && (
+                    <p className="flex items-center justify-between">
+                      <span>Customer paid:</span>
+                      <span className="font-medium">{formatMoney(booking.externalReference.totalAmount)}</span>
+                    </p>
+                  )}
+                  <p className="flex items-center justify-between">
+                    <span>Gross charges:</span>
+                    <span className="font-medium">{formatMoney(booking.externalReference.grossCharges)}</span>
+                  </p>
+                  {booking.externalReference.otaCommission != null && (
+                    <p className="flex items-center justify-between text-red-600 dark:text-red-400">
+                      <span>OTA commission:</span>
+                      <span className="font-medium">- {formatMoney(booking.externalReference.otaCommission)}</span>
+                    </p>
+                  )}
+                  {booking.externalReference.netAmount != null && (
+                    <p className="flex items-center justify-between border-t border-amber-300 dark:border-amber-700 pt-1 mt-1">
+                      <span className="font-medium">Net to property:</span>
+                      <span className="font-semibold">{formatMoney(booking.externalReference.netAmount)}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         ) : null}
 

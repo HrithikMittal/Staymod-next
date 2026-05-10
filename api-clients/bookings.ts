@@ -24,6 +24,17 @@ export type BookingListItem = {
   customItems?: Array<{ name: string; amount: number }>;
   discount?: number;
   advanceAmount?: number;
+  externalReference?: {
+    source?: string;
+    confirmationCode?: string;
+    totalAmount?: number;
+    grossCharges?: number;
+    otaCommission?: number;
+    netAmount?: number;
+    currency?: string;
+    importedFrom?: string;
+    rawEmail?: Record<string, unknown>;
+  };
   status: string;
   createdAt: string;
   updatedAt: string;
