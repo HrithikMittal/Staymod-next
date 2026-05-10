@@ -78,6 +78,18 @@ export type Booking = OrganizationScope & {
   discount?: number;
   /** Amount received in advance from guest at booking time. */
   advanceAmount?: number;
+  /** OTA source and commission tracking (for imported bookings) */
+  externalReference?: {
+    source?: string; // e.g., "goibibo", "makemytrip", "booking.com"
+    confirmationCode?: string;
+    totalAmount?: number; // Total customer paid
+    grossCharges?: number; // Property gross charges before commission
+    otaCommission?: number; // OTA commission deducted
+    netAmount?: number; // Net payable to property after commission
+    currency?: string;
+    importedFrom?: string; // "email" for AI-imported bookings
+    rawEmail?: Record<string, unknown>; // Raw email metadata
+  };
   status: BookingStatus;
   createdAt: Date;
   updatedAt: Date;

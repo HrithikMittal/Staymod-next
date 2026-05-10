@@ -10,7 +10,7 @@ const openai = new OpenAI({
 // Note: OpenAI structured outputs require .nullable() with .optional()
 const BookingSchema = z.object({
   isBookingConfirmation: z.boolean().describe("True if this is a booking confirmation email, false otherwise"),
-  source: z.string().describe("OTA platform name (airbnb, booking.com, makemytrip, expedia, vrbo, or other)"),
+  source: z.string().describe("OTA platform name (airbnb, booking.com, makemytrip, goibibo, expedia, vrbo, or other)"),
   guestName: z.string().describe("Full name of the guest making the booking"),
   guestEmail: z.string().nullable().optional().describe("Guest's email address if provided"),
   guestPhone: z.string().nullable().optional().describe("Guest's phone number if provided"),
@@ -21,8 +21,11 @@ const BookingSchema = z.object({
   specialRequests: z.string().nullable().optional().describe("Special requests or notes from guest"),
   roomType: z.string().nullable().optional().describe("Type or category of room booked"),
   roomNumber: z.string().nullable().optional().describe("Specific room number if assigned"),
-  totalAmount: z.number().nullable().optional().describe("Total booking amount"),
+  totalAmount: z.number().nullable().optional().describe("Total booking amount (customer paid)"),
   currency: z.string().nullable().optional().describe("Currency code (USD, INR, EUR, etc.)"),
+  grossCharges: z.number().nullable().optional().describe("Property gross charges (before OTA commission)"),
+  otaCommission: z.number().nullable().optional().describe("OTA commission amount deducted"),
+  netAmount: z.number().nullable().optional().describe("Net amount payable to property (after commission)"),
 });
 
 export type ParsedBooking = z.infer<typeof BookingSchema>;
@@ -50,7 +53,7 @@ export async function parseOTAEmailWithLLM(
           role: "system",
           content: `You are a booking information extraction system for a property management platform called Staymod.
 
-Your job is to extract structured booking details from hotel/accommodation booking confirmation emails from various OTA platforms (Airbnb, Booking.com, MakeMyTrip, Expedia, VRBO, etc.).
+Your job is to extract structured booking details from hotel/accommodation booking confirmation emails from various OTA platforms (Airbnb, Booking.com, MakeMyTrip, GoIbibo, Expedia, VRBO, etc.).
 
 CRITICAL RULES:
 1. Only extract information from CONFIRMED booking emails
@@ -60,6 +63,13 @@ CRITICAL RULES:
 5. Be conservative - only extract data you're highly confident about
 6. If a field is not clearly present in the email, leave it as null/undefined
 7. Look for keywords like "Reservation", "Booking Confirmed", "Check-in", "Check-out", "Guest Name", "Confirmation Code"
+
+PRICING EXTRACTION (important for commission tracking):
+- totalAmount: Total amount customer paid (look for "Total", "Grand Total", "Amount Paid")
+- grossCharges: Property gross charges before commission (look for "Property Gross Charges", "Gross Charges", "G")
+- otaCommission: OTA commission deducted (look for "Commission", "Service Fee", "C")
+- netAmount: Net amount payable to property (look for "Payable to Property", "Net Amount", "G-C")
+- Extract ALL pricing fields if available in payment breakdown or invoice section
 
 COMMON EMAIL TYPES TO REJECT (set isBookingConfirmation = false):
 - Booking inquiries or requests

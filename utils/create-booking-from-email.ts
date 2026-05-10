@@ -17,7 +17,7 @@ export async function createBookingFromParsedData(
   if (bookingData.confirmationCode) {
     const existing = await db.collection('bookings').findOne({
       propertyId: property._id,
-      'externalReference.code': bookingData.confirmationCode,
+      'externalReference.confirmationCode': bookingData.confirmationCode,
       'externalReference.source': bookingData.source,
     });
 
@@ -121,7 +121,7 @@ export async function createBookingFromParsedData(
       }
     ] : [],
     discount: 0,
-    advanceAmount: bookingData.totalAmount || 0, // Mark as paid
+    advanceAmount: bookingData.netAmount || bookingData.totalAmount || 0, // Use net amount if available
 
     // Status - OTA bookings are already confirmed
     status: 'confirmed',
@@ -129,10 +129,14 @@ export async function createBookingFromParsedData(
     // External reference for tracking
     externalReference: {
       source: bookingData.source,
-      code: bookingData.confirmationCode,
+      confirmationCode: bookingData.confirmationCode,
+      totalAmount: bookingData.totalAmount,
+      grossCharges: bookingData.grossCharges,
+      otaCommission: bookingData.otaCommission,
+      netAmount: bookingData.netAmount,
+      currency: bookingData.currency,
       importedFrom: 'email',
       importedAt: new Date(),
-      currency: bookingData.currency,
       rawEmail: {
         from: rawEmail.from,
         subject: rawEmail.subject,
