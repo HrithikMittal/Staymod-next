@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
 
     console.log('📧 Inbound webhook received:', {
       type: webhookData.type,
-      emailId: webhookData.data?.email_id,
+      id: webhookData.data?.id,
     });
 
     // Only process email.received events
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       to: emailData.to,
       from: emailData.from,
       subject: emailData.subject,
-      emailId: emailData.email_id,
+      id: emailData.id,
     });
 
     // Extract propertyId from recipient email
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
 
     console.log('🔍 Fetching email content from Resend...');
     const emailContentResponse = await fetch(
-      `https://api.resend.com/emails/${emailData.email_id}`,
+      `https://api.resend.com/emails/${emailData.id}`,
       {
         headers: {
           Authorization: `Bearer ${resendApiKey}`,
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
         receivedAt: new Date(),
         reason: 'not_a_booking_confirmation',
         emailPreview: emailBody.substring(0, 500),
-        resendEmailId: emailData.email_id,
+        resendEmailId: emailData.id,
       });
 
       return NextResponse.json({
@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
         bookingData,
         {
           ...fullEmailData,
-          resendEmailId: emailData.email_id,
+          resendEmailId: emailData.id,
           to: emailData.to,
         }
       );
@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
         parsedData: bookingData,
         error: bookingError instanceof Error ? bookingError.message : 'Unknown error',
         receivedAt: new Date(),
-        resendEmailId: emailData.email_id,
+        resendEmailId: emailData.id,
       });
 
       return NextResponse.json({
