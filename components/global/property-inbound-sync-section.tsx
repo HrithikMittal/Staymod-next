@@ -16,7 +16,7 @@ export function PropertyInboundSyncSection({
 }: PropertyInboundSyncSectionProps) {
   const [copied, setCopied] = useState(false);
 
-  const inboundEmail = `property-${propertyId}@inbound.staymod.in`;
+  const inboundEmail = `property-inbound-${propertyId}@staymod.in`;
 
   const handleCopy = async () => {
     try {

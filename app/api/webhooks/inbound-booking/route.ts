@@ -22,9 +22,9 @@ export async function POST(request: NextRequest) {
     });
 
     // Extract propertyId from recipient email
-    // Format: property-{propertyId}@inbound.staymod.in
+    // Format: property-inbound-{propertyId}@staymod.in
     const toEmail = Array.isArray(emailData.to) ? emailData.to[0] : emailData.to;
-    const propertyIdMatch = toEmail.match(/property-([a-f0-9]{24})@/i);
+    const propertyIdMatch = toEmail.match(/property-inbound-([a-f0-9]{24})@/i);
 
     if (!propertyIdMatch) {
       console.log('❌ Invalid email format:', toEmail);

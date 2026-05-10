@@ -18,30 +18,26 @@ The inbound sync system allows automatic creation of bookings when you receive c
 
 ## Setup Steps
 
-### Step 1: Configure Resend Inbound Domain
+### Step 1: Configure Resend Inbound for Main Domain
 
-1. **Add Inbound Domain in Resend Dashboard:**
+1. **Add Main Domain in Resend Dashboard (if not already added):**
    - Go to https://resend.com/domains
-   - Click "Add Domain"
-   - Enter: `inbound.staymod.in`
-   - Click "Add"
+   - Your main domain `staymod.in` should already be verified for sending emails
+   - We'll use the same domain for inbound emails
 
-2. **Add DNS Records:**
+2. **Verify MX Records:**
    
-   Resend will provide MX and TXT records. Add these to your DNS:
+   Ensure your domain has MX records pointing to Resend:
 
    ```
    Type: MX
-   Host: inbound.staymod.in (or just "inbound")
+   Host: staymod.in (or @)
    Priority: 10
    Value: inbound-smtp.resend.com
    TTL: 3600
-
-   Type: TXT
-   Host: inbound.staymod.in (or just "inbound")
-   Value: v=spf1 include:resend.com ~all
-   TTL: 3600
    ```
+
+   **Note:** If you use this domain for regular emails (Google Workspace, etc.), you may need to add multiple MX records with priorities. Resend inbound can coexist with other email services.
 
 3. **Wait for Verification:**
    - DNS propagation takes 5-15 minutes
@@ -55,8 +51,8 @@ The inbound sync system allows automatic creation of bookings when you receive c
 1. Go to https://resend.com/inbound
 2. Click "Create Route"
 3. Configure:
-   - **Domain:** `inbound.staymod.in`
-   - **Match Pattern:** `*@inbound.staymod.in` (catch-all)
+   - **Domain:** `staymod.in`
+   - **Match Pattern:** `property-inbound-*@staymod.in`
    - **Forward To:** `https://staymod.in/api/webhooks/inbound-booking`
 4. Click "Create"
 
@@ -67,8 +63,8 @@ curl -X POST https://api.resend.com/emails/inbound \
   -H "Authorization: Bearer YOUR_RESEND_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "domain": "inbound.staymod.in",
-    "pattern": "*@inbound.staymod.in",
+    "domain": "staymod.in",
+    "pattern": "property-inbound-*@staymod.in",
     "forward_to": "https://staymod.in/api/webhooks/inbound-booking"
   }'
 ```
@@ -78,8 +74,9 @@ curl -X POST https://api.resend.com/emails/inbound \
 Send a test email to verify the setup:
 
 ```bash
-# 1. Send test email to any address at inbound.staymod.in
-# Example: test@inbound.staymod.in
+# 1. Send test email to a property-inbound address
+# Example: property-inbound-test@staymod.in
+# Or use a real propertyId: property-inbound-663f4a1b2c3d4e5f6a7b8c9d@staymod.in
 
 # 2. Check webhook logs
 # The webhook should receive the email and log it
@@ -110,7 +107,7 @@ import { InboundSyncStats } from "@/components/global/inbound-sync-stats";
 
 1. **Get Unique Email:**
    - Property ID: `abc123def456`
-   - Inbound Email: `property-abc123def456@inbound.staymod.in`
+   - Inbound Email: `property-inbound-abc123def456@staymod.in`
 
 2. **Set Up Gmail Forwarding:**
 
@@ -120,7 +117,7 @@ import { InboundSyncStats } from "@/components/global/inbound-sync-stats";
    - Create Filter:
      - **From:** `noreply@airbnb.com`
      - **Subject:** `reservation` or `booking confirmed`
-   - **Action:** Forward to `property-abc123def456@inbound.staymod.in`
+   - **Action:** Forward to `property-inbound-abc123def456@staymod.in`
    - Save filter
 
 3. **Done!** All future booking confirmations auto-import
