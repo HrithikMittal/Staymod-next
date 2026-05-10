@@ -5,6 +5,8 @@ import { fetchBookingReceipt, resendConfirmationEmail, updateBooking } from "@/a
 import { BookingDetailsDialog } from "@/components/global/booking-details-dialog";
 import type { ListRoomsResponse, RoomListItem } from "@/api-clients/rooms";
 import { BookingListItemRow } from "@/components/global/booking-list-item";
+import { BookingsCalendarView } from "@/components/global/bookings-calendar-view";
+import { BookingsViewToggle } from "@/components/global/bookings-view-toggle";
 import { CreateBookingDialog } from "@/components/global/create-booking-dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +23,8 @@ import { useMutation } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { calculateBookingAmount } from "@/utils/booking-pricing";
+
+type BookingStatus = "pending" | "confirmed" | "checked_in" | "completed" | "cancelled" | "no_show";
 
 export function PropertyBookingsPage() {
   const params = useParams();
@@ -40,6 +44,13 @@ export function PropertyBookingsPage() {
   const [statusNotice, setStatusNotice] = useState<string | null>(null);
   const [receiptNotice, setReceiptNotice] = useState<string | null>(null);
   const [cancelConfirmBooking, setCancelConfirmBooking] = useState<BookingListItem | null>(null);
+
+  // View mode state
+  const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
+
+  // Filter states (shared between list and calendar views)
+  const [selectedRoomId, setSelectedRoomId] = useState<string | undefined>();
+  const [selectedStatus, setSelectedStatus] = useState<BookingStatus | undefined>();
 
   const resendMutation = useMutation({
     mutationFn: (bookingId: string) => resendConfirmationEmail(propertyId, bookingId),
@@ -166,6 +177,34 @@ export function PropertyBookingsPage() {
     setDetailsDialog({ open: true, booking, roomAmount });
   }
 
+  function handleSelectBooking(bookingId: string) {
+    const booking = bookingsQuery.data?.bookings.find((b) => b._id === bookingId);
+    if (!booking) return;
+
+    // Calculate room amount for this booking
+    const entries = bookingRoomEntries(booking);
+    const roomAmount = entries.reduce((sum, entry) => {
+      const room = roomById.get(entry.roomId);
+      if (booking.status === "cancelled") {
+        return 0;
+      }
+      return (
+        sum +
+        calculateBookingAmount(booking.checkIn, booking.checkOut, entry.quantity, {
+          priceWeekday: room?.priceWeekday,
+          priceWeekend: room?.priceWeekend,
+        })
+      );
+    }, 0);
+
+    openDetails(booking, roomAmount);
+  }
+
+  function handleCreateBooking(date?: Date) {
+    // Open create dialog, optionally with pre-filled date
+    setDialog({ open: true, booking: null });
+  }
+
   function buildBookingUpdatePayload(booking: BookingListItem, status: "completed" | "cancelled") {
     return {
       guestName: booking.guestName,
@@ -195,13 +234,14 @@ export function PropertyBookingsPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 pt-3 pb-8 md:px-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Bookings</h1>
-          <p className="text-sm text-muted-foreground">
-            Reservations for this property. Creating or editing a booking updates nightly room
-            availability.
-          </p>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-col gap-1">
+            <h1 className="text-2xl font-semibold tracking-tight">Bookings</h1>
+            <p className="text-sm text-muted-foreground">
+              Reservations for this property. Creating or editing a booking updates nightly room
+              availability.
+            </p>
           {resendNotice ? (
             <p className="text-sm text-emerald-600 dark:text-emerald-400" role="status">
               {resendNotice}
@@ -237,28 +277,34 @@ export function PropertyBookingsPage() {
               {downloadReceiptMutation.error.message}
             </p>
           ) : null}
+          </div>
+          <Button type="button" onClick={openCreate} disabled={!propertyId}>
+            <PlusIcon data-icon="inline-start" />
+            New booking
+          </Button>
         </div>
-        <Button type="button" onClick={openCreate} disabled={!propertyId}>
-          <PlusIcon data-icon="inline-start" />
-          New booking
-        </Button>
+
+        {/* View Toggle */}
+        <BookingsViewToggle activeView={viewMode} onViewChange={setViewMode} />
       </div>
 
-      <section className="overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm">
-        {bookingsQuery.isLoading ? (
-          <p className="px-5 py-8 text-sm text-muted-foreground">Loading bookings...</p>
-        ) : bookingsQuery.isError ? (
-          <p className="px-5 py-8 text-sm text-destructive">{bookingsQuery.error.message}</p>
-        ) : sortedBookings.length === 0 ? (
-          <div className="flex flex-col items-start gap-3 px-5 py-10">
-            <p className="text-sm text-muted-foreground">No bookings yet.</p>
-            <Button type="button" variant="outline" size="sm" onClick={openCreate}>
-              Create a booking
-            </Button>
-          </div>
-        ) : (
-          <ul className="list-none">
-            {sortedBookings.map((b) => {
+      {/* List View */}
+      {viewMode === "list" && (
+        <section className="overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm">
+          {bookingsQuery.isLoading ? (
+            <p className="px-5 py-8 text-sm text-muted-foreground">Loading bookings...</p>
+          ) : bookingsQuery.isError ? (
+            <p className="px-5 py-8 text-sm text-destructive">{bookingsQuery.error.message}</p>
+          ) : sortedBookings.length === 0 ? (
+            <div className="flex flex-col items-start gap-3 px-5 py-10">
+              <p className="text-sm text-muted-foreground">No bookings yet.</p>
+              <Button type="button" variant="outline" size="sm" onClick={openCreate}>
+                Create a booking
+              </Button>
+            </div>
+          ) : (
+            <ul className="list-none">
+              {sortedBookings.map((b) => {
               const entries = bookingRoomEntries(b);
               const roomAmount = entries.reduce((sum, entry) => {
                 const room = roomById.get(entry.roomId);
@@ -324,10 +370,37 @@ export function PropertyBookingsPage() {
                 onDownloadReceipt={() => downloadReceiptMutation.mutate({ bookingId: b._id })}
               />
               );
-            })}
-          </ul>
-        )}
-      </section>
+              })}
+            </ul>
+          )}
+        </section>
+      )}
+
+      {/* Calendar View */}
+      {viewMode === "calendar" && (
+        <section>
+          {bookingsQuery.isLoading ? (
+            <div className="rounded-lg border border-border bg-card p-8">
+              <p className="text-center text-sm text-muted-foreground">Loading bookings...</p>
+            </div>
+          ) : bookingsQuery.isError ? (
+            <div className="rounded-lg border border-border bg-card p-8">
+              <p className="text-center text-sm text-destructive">{bookingsQuery.error.message}</p>
+            </div>
+          ) : (
+            <BookingsCalendarView
+              bookings={bookingsQuery.data?.bookings ?? []}
+              rooms={roomsQuery.data?.rooms ?? []}
+              onSelectBooking={handleSelectBooking}
+              onCreateBooking={handleCreateBooking}
+              selectedRoomId={selectedRoomId}
+              selectedStatus={selectedStatus}
+              onRoomFilterChange={setSelectedRoomId}
+              onStatusFilterChange={setSelectedStatus}
+            />
+          )}
+        </section>
+      )}
 
       {propertyId ? (
         <CreateBookingDialog

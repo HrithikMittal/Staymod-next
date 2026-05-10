@@ -29,6 +29,30 @@ function useOrigin(): string {
   );
 }
 
+/**
+ * Truncate a URL to show the beginning and end with ellipsis in the middle.
+ * Highlights the last 8 characters of the token for visual distinction.
+ * @param url - Full URL to truncate
+ * @returns Truncated display version
+ */
+function truncateUrl(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    const pathParts = urlObj.pathname.split("/");
+    const tokenWithExt = pathParts[pathParts.length - 1]; // e.g., "abc123def456.ics"
+    const token = tokenWithExt.replace(".ics", "");
+
+    // Show last 8 chars of token for distinction
+    const tokenEnd = token.slice(-8);
+
+    // Build truncated version: domain + /.../ + last 8 chars + .ics
+    return `${urlObj.origin}/.../${tokenEnd}.ics`;
+  } catch {
+    // Fallback if URL parsing fails
+    return url;
+  }
+}
+
 type RoomCalendarCardProps = {
   room: RoomListItem;
   propertyId: string;
@@ -105,14 +129,18 @@ function RoomCalendarCard({ room, propertyId, origin }: RoomCalendarCardProps) {
   const isMultiUnit = room.roomNumbers && room.roomNumbers.length > 1;
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
-      <div className="mb-3">
-        <h3 className="font-semibold text-foreground">{room.name}</h3>
-        <p className="text-sm text-muted-foreground">
-          {room.type.replace(/_/g, " ")}
-          {isMultiUnit && ` • ${room.roomNumbers?.length} units: ${room.roomNumbers?.join(", ")}`}
-        </p>
-      </div>
+    <Accordion className="rounded-lg border border-border bg-card">
+      <AccordionItem value={`room-${room._id}`} className="border-none">
+        <AccordionTrigger className="px-4 pt-4 pb-3 hover:no-underline">
+          <div className="text-left">
+            <h3 className="font-semibold text-foreground">{room.name}</h3>
+            <p className="text-sm text-muted-foreground">
+              {room.type.replace(/_/g, " ")}
+              {isMultiUnit && ` • ${room.roomNumbers?.length} units: ${room.roomNumbers?.join(", ")}`}
+            </p>
+          </div>
+        </AccordionTrigger>
+        <AccordionContent className="px-4 pb-4 pt-0">
 
       {!isMultiUnit ? (
         // Single-unit room: show simple single-URL UI
@@ -137,9 +165,10 @@ function RoomCalendarCard({ room, propertyId, origin }: RoomCalendarCardProps) {
               <div className="flex gap-2">
                 <Input
                   id={`ical-url-${room._id}`}
-                  value={combinedIcalUrl}
+                  value={truncateUrl(combinedIcalUrl)}
                   readOnly
                   className="font-mono text-xs"
+                  title={combinedIcalUrl}
                 />
                 <Button
                   size="icon-sm"
@@ -194,9 +223,10 @@ function RoomCalendarCard({ room, propertyId, origin }: RoomCalendarCardProps) {
                 <div className="flex gap-2">
                   <Input
                     id={`ical-combined-${room._id}`}
-                    value={combinedIcalUrl}
+                    value={truncateUrl(combinedIcalUrl)}
                     readOnly
                     className="font-mono text-xs"
+                    title={combinedIcalUrl}
                   />
                   <Button
                     size="icon-sm"
@@ -259,9 +289,10 @@ function RoomCalendarCard({ room, propertyId, origin }: RoomCalendarCardProps) {
                         <div className="flex gap-2">
                           <Input
                             id={`ical-${room._id}-${roomNumber}`}
-                            value={url}
+                            value={truncateUrl(url)}
                             readOnly
                             className="font-mono text-xs"
+                            title={url}
                           />
                           <Button
                             size="icon-sm"
@@ -285,7 +316,9 @@ function RoomCalendarCard({ room, propertyId, origin }: RoomCalendarCardProps) {
           </div>
         </div>
       )}
-    </div>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
   );
 }
 
