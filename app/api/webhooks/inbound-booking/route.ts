@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Resend } from "resend";
 import { getDb } from "@/utils/mongodb";
 import { ObjectId } from "mongodb";
 import { parseOTAEmailWithLLM } from "@/utils/parse-ota-email-llm";
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest) {
 
     console.log('📧 Inbound webhook received:', {
       type: webhookData.type,
-      id: webhookData.data?.id,
+      emailId: webhookData.data?.email_id,
     });
 
     // Only process email.received events
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
       to: emailData.to,
       from: emailData.from,
       subject: emailData.subject,
-      id: emailData.id,
+      emailId: emailData.email_id,
     });
 
     // Extract propertyId from recipient email
@@ -58,32 +59,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Property not found' }, { status: 404 });
     }
 
-    // Fetch full email content from Resend
+    // Fetch full email content from Resend using SDK
     const resendApiKey = process.env.RESEND_API_KEY;
     if (!resendApiKey) {
       console.error('❌ RESEND_API_KEY not configured');
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
 
+    const resend = new Resend(resendApiKey);
+
     console.log('🔍 Fetching email content from Resend...');
-    const emailContentResponse = await fetch(
-      `https://api.resend.com/emails/${emailData.id}`,
-      {
-        headers: {
-          Authorization: `Bearer ${resendApiKey}`,
-        },
-      }
+    const { data: fullEmailData, error: resendError } = await resend.emails.receiving.get(
+      emailData.email_id
     );
 
-    if (!emailContentResponse.ok) {
-      console.error('❌ Failed to fetch email content:', emailContentResponse.status);
+    if (resendError || !fullEmailData) {
+      console.error('❌ Failed to fetch email content:', resendError);
       return NextResponse.json(
-        { error: 'Failed to fetch email content' },
+        { error: 'Failed to fetch email content', details: resendError?.message },
         { status: 500 }
       );
     }
 
-    const fullEmailData = await emailContentResponse.json();
     console.log('✅ Email content fetched:', {
       hasText: !!fullEmailData.text,
       hasHtml: !!fullEmailData.html,
@@ -116,7 +113,7 @@ export async function POST(request: NextRequest) {
         receivedAt: new Date(),
         reason: 'not_a_booking_confirmation',
         emailPreview: emailBody.substring(0, 500),
-        resendEmailId: emailData.id,
+        resendEmailId: emailData.email_id,
       });
 
       return NextResponse.json({
@@ -140,7 +137,7 @@ export async function POST(request: NextRequest) {
         bookingData,
         {
           ...fullEmailData,
-          resendEmailId: emailData.id,
+          resendEmailId: emailData.email_id,
           to: emailData.to,
         }
       );
@@ -167,7 +164,7 @@ export async function POST(request: NextRequest) {
         parsedData: bookingData,
         error: bookingError instanceof Error ? bookingError.message : 'Unknown error',
         receivedAt: new Date(),
-        resendEmailId: emailData.id,
+        resendEmailId: emailData.email_id,
       });
 
       return NextResponse.json({
