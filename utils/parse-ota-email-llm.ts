@@ -43,7 +43,7 @@ export async function parseOTAEmailWithLLM(
     const truncatedBody = body.substring(0, 6000);
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-2024-08-06", // Supports structured outputs
+      model: "gpt-4o", // Supports structured outputs
       temperature: 0, // Deterministic for parsing
       messages: [
         {
