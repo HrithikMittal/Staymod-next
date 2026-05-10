@@ -7,21 +7,22 @@ const openai = new OpenAI({
 });
 
 // Define the schema for parsed booking data
+// Note: OpenAI structured outputs require .nullable() with .optional()
 const BookingSchema = z.object({
   isBookingConfirmation: z.boolean().describe("True if this is a booking confirmation email, false otherwise"),
   source: z.string().describe("OTA platform name (airbnb, booking.com, makemytrip, expedia, vrbo, or other)"),
   guestName: z.string().describe("Full name of the guest making the booking"),
-  guestEmail: z.string().optional().describe("Guest's email address if provided"),
-  guestPhone: z.string().optional().describe("Guest's phone number if provided"),
+  guestEmail: z.string().nullable().optional().describe("Guest's email address if provided"),
+  guestPhone: z.string().nullable().optional().describe("Guest's phone number if provided"),
   checkIn: z.string().describe("Check-in date in YYYY-MM-DD format"),
   checkOut: z.string().describe("Check-out date in YYYY-MM-DD format"),
-  numberOfGuests: z.number().optional().describe("Total number of guests"),
-  confirmationCode: z.string().optional().describe("Booking confirmation or reference number"),
-  specialRequests: z.string().optional().describe("Special requests or notes from guest"),
-  roomType: z.string().optional().describe("Type or category of room booked"),
-  roomNumber: z.string().optional().describe("Specific room number if assigned"),
-  totalAmount: z.number().optional().describe("Total booking amount"),
-  currency: z.string().optional().describe("Currency code (USD, INR, EUR, etc.)"),
+  numberOfGuests: z.number().nullable().optional().describe("Total number of guests"),
+  confirmationCode: z.string().nullable().optional().describe("Booking confirmation or reference number"),
+  specialRequests: z.string().nullable().optional().describe("Special requests or notes from guest"),
+  roomType: z.string().nullable().optional().describe("Type or category of room booked"),
+  roomNumber: z.string().nullable().optional().describe("Specific room number if assigned"),
+  totalAmount: z.number().nullable().optional().describe("Total booking amount"),
+  currency: z.string().nullable().optional().describe("Currency code (USD, INR, EUR, etc.)"),
 });
 
 export type ParsedBooking = z.infer<typeof BookingSchema>;
