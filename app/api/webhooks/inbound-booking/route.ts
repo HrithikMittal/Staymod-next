@@ -12,13 +12,27 @@ import { createBookingFromParsedData } from "@/utils/create-booking-from-email";
  */
 export async function POST(request: NextRequest) {
   try {
-    // Resend sends email data as JSON
-    const emailData = await request.json();
+    // Resend sends webhook event with metadata
+    const webhookData = await request.json();
 
-    console.log('📧 Inbound email received:', {
+    console.log('📧 Inbound webhook received:', {
+      type: webhookData.type,
+      emailId: webhookData.data?.email_id,
+    });
+
+    // Only process email.received events
+    if (webhookData.type !== 'email.received') {
+      console.log('ℹ️  Skipping non-email event:', webhookData.type);
+      return NextResponse.json({ success: true, skipped: true });
+    }
+
+    const emailData = webhookData.data;
+
+    console.log('📧 Email metadata:', {
       to: emailData.to,
       from: emailData.from,
       subject: emailData.subject,
+      emailId: emailData.email_id,
     });
 
     // Extract propertyId from recipient email
@@ -33,7 +47,7 @@ export async function POST(request: NextRequest) {
 
     const propertyId = propertyIdMatch[1];
 
-    // Verify property exists and has inbound sync enabled
+    // Verify property exists
     const db = await getDb();
     const property = await db.collection('properties').findOne({
       _id: new ObjectId(propertyId),
@@ -44,8 +58,39 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Property not found' }, { status: 404 });
     }
 
-    // Parse email body (Resend sends both text and html)
-    const emailBody = emailData.text || emailData.html || '';
+    // Fetch full email content from Resend
+    const resendApiKey = process.env.RESEND_API_KEY;
+    if (!resendApiKey) {
+      console.error('❌ RESEND_API_KEY not configured');
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+    }
+
+    console.log('🔍 Fetching email content from Resend...');
+    const emailContentResponse = await fetch(
+      `https://api.resend.com/emails/${emailData.email_id}`,
+      {
+        headers: {
+          Authorization: `Bearer ${resendApiKey}`,
+        },
+      }
+    );
+
+    if (!emailContentResponse.ok) {
+      console.error('❌ Failed to fetch email content:', emailContentResponse.status);
+      return NextResponse.json(
+        { error: 'Failed to fetch email content' },
+        { status: 500 }
+      );
+    }
+
+    const fullEmailData = await emailContentResponse.json();
+    console.log('✅ Email content fetched:', {
+      hasText: !!fullEmailData.text,
+      hasHtml: !!fullEmailData.html,
+    });
+
+    // Parse email body
+    const emailBody = fullEmailData.text || fullEmailData.html || '';
 
     if (!emailBody) {
       console.log('❌ Email has no body');
@@ -55,8 +100,8 @@ export async function POST(request: NextRequest) {
     // Parse email using OpenAI LLM
     console.log('🤖 Parsing email with OpenAI GPT-4...');
     const bookingData = await parseOTAEmailWithLLM(
-      emailData.from,
-      emailData.subject,
+      fullEmailData.from || emailData.from,
+      fullEmailData.subject || emailData.subject,
       emailBody
     );
 
@@ -66,11 +111,12 @@ export async function POST(request: NextRequest) {
       // Store as unprocessed email for potential review
       await db.collection('unprocessedEmails').insertOne({
         propertyId: new ObjectId(propertyId),
-        from: emailData.from,
-        subject: emailData.subject,
+        from: fullEmailData.from || emailData.from,
+        subject: fullEmailData.subject || emailData.subject,
         receivedAt: new Date(),
         reason: 'not_a_booking_confirmation',
         emailPreview: emailBody.substring(0, 500),
+        resendEmailId: emailData.email_id,
       });
 
       return NextResponse.json({
@@ -92,7 +138,11 @@ export async function POST(request: NextRequest) {
       const booking = await createBookingFromParsedData(
         property,
         bookingData,
-        emailData
+        {
+          ...fullEmailData,
+          resendEmailId: emailData.email_id,
+          to: emailData.to,
+        }
       );
 
       console.log('🎉 Booking created successfully:', booking._id.toString());
@@ -112,11 +162,12 @@ export async function POST(request: NextRequest) {
       // Store as failed processing
       await db.collection('failedBookingImports').insertOne({
         propertyId: new ObjectId(propertyId),
-        from: emailData.from,
-        subject: emailData.subject,
+        from: fullEmailData.from || emailData.from,
+        subject: fullEmailData.subject || emailData.subject,
         parsedData: bookingData,
         error: bookingError instanceof Error ? bookingError.message : 'Unknown error',
         receivedAt: new Date(),
+        resendEmailId: emailData.email_id,
       });
 
       return NextResponse.json({
